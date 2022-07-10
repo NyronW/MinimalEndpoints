@@ -12,30 +12,46 @@ namespace MinimalEndpoints.WebApiDemo.Controllers;
 [ApiExplorerSettings(IgnoreApi = true)]
 public class AuthenticationController : ControllerBase
 {
-    [HttpPost, Route("login")]
+    private readonly IConfiguration _configuration;
+
+    Dictionary<string, User> Users = new Dictionary<string, User>
+    {
+        { "admin", new User("admin","secret123", new[] { new Claim("todo:read-write","true") }) },
+        { "demo", new User("demo","secret123", new[] { new Claim("todo:read","true") }) }
+    };
+
+
+    public AuthenticationController(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
+    [HttpPost, Route("")]
     public IActionResult Login(LoginModel loginDTO)
     {
         try
         {
             if (string.IsNullOrEmpty(loginDTO.UserName) ||
-            string.IsNullOrEmpty(loginDTO.Password))
+                     string.IsNullOrEmpty(loginDTO.Password))
                 return BadRequest("Username and/or Password not specified");
 
-            if (loginDTO.UserName.Equals("demo") &&
-                    loginDTO.Password.Equals("secret123"))
+            var user = Users[loginDTO.UserName.ToLower()];
+
+            if (user.Password.Equals(loginDTO.Password))
             {
-                var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("thisisasecretkey@123"));
+                var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["AuthZ:SecretKey"]));
                 var signinCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
                 var jwtSecurityToken = new JwtSecurityToken(
-                    issuer: "ABCXYZ",
-                    audience: "http://localhost:7024",
-                    claims: new List<Claim>(),
+                    issuer: _configuration["AuthZ:Issuer"],
+                    audience: _configuration["AuthZ:Audience"],
+                    claims: user.Claims,
                     expires: DateTime.Now.AddMinutes(10),
                     signingCredentials: signinCredentials
                 );
 
-                return Ok(new JwtSecurityTokenHandler()
-                       .WriteToken(jwtSecurityToken));
+                var token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+
+                return Ok(token);
             }
         }
         catch
@@ -43,6 +59,7 @@ public class AuthenticationController : ControllerBase
             return BadRequest
             ("An error occurred in generating the token");
         }
+
         return Unauthorized();
     }
 }

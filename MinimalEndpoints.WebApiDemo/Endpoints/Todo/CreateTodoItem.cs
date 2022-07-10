@@ -1,17 +1,19 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MinimalEndpoints;
 using MinimalEndpoints.WebApiDemo.Models;
 using MinimalEndpoints.WebApiDemo.Services;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 
 [Authorize(Policy = "todo:read-write")]
+[Authorize(Policy = "todo:max-count")]
 [ProducesResponseType(StatusCodes.Status201Created)]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
 [Endpoint(TagName = "Todo", OperatinId = nameof(CreateTodoItem))]
-public class CreateTodoItem : Endpoint<TodoItem, IResult>
+public class CreateTodoItem : Endpoint<string, IResult>
 {
     private readonly ITodoRepository _repository;
 
@@ -34,23 +36,23 @@ public class CreateTodoItem : Endpoint<TodoItem, IResult>
     /// 
     ///     POST /todos
     ///     {        
-    ///       "id": "TSK-001",
     ///       "description": "New Task",
-    ///       "completed": false        
     ///     }
     /// </remarks>
     /// <response code="201">Returns the newly create item</response>
     /// <response code="400">Invalid data passed from client</response>
+    /// <response code="401">Client is not authenticated</response>
+    /// <response code="403">Client is forbiden</response>
     /// <response code="500">Internal server error occured</response>
-    public override async Task<IResult> SendAsync(TodoItem todo)
+    public override async Task<IResult> SendAsync(string description)
     {
-        if (todo == null || string.IsNullOrWhiteSpace(todo.description))
+        if (string.IsNullOrWhiteSpace(description))
         {
             return Results.BadRequest("description is required");
         }
 
-        var id = await _repository.CreateAsync(todo.description);
+        var id = await _repository.CreateAsync(description);
 
-        return Results.Created($"/endpoints/todos/{id}", todo);
+        return Results.Created($"/endpoints/todos/{id}", new TodoItem(id, description, false));
     }
 }

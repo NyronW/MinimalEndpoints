@@ -22,7 +22,7 @@ public class MaxTodoItemsRequirementHandler : AuthorizationHandler<MaxTodoCountR
         {
             context.Fail();
         }
-
+        
         context.Succeed(requirement);
     }
 }

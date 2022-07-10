@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MinimalEndpoints.WebApiDemo.Authorization;
 using MinimalEndpoints.WebApiDemo.Endpoints;
 using MinimalEndpoints.WebApiDemo.Services;
 using System.Reflection;
+using System.Text;
 
 namespace MinimalEndpoints.WebApiDemo;
 
@@ -81,21 +84,33 @@ public static class ProgramExtensions
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
         })
-            .AddJwtBearer(c =>
+        .AddJwtBearer(c =>
         {
-            c.Authority = $"https://{builder.Configuration["Auth0:Domain"]}";
-            c.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            var key = Encoding.ASCII.GetBytes(builder.Configuration["AuthZ:SecretKey"]);
+
+            c.TokenValidationParameters = new TokenValidationParameters
             {
-                ValidAudience = builder.Configuration["Auth0:Audience"],
-                ValidIssuer = $"{builder.Configuration["Auth0:Domain"]}"
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["AuthZ:Issuer"],
+                ValidAudience = builder.Configuration["AuthZ:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(key)
             };
         });
+
+        builder.Services.AddTransient<IAuthorizationHandler, MaxTodoItemsRequirementHandler>();
 
         builder.Services.AddAuthorization(options =>
         {
             options.AddPolicy("todo:read-write", policyBuilder =>
+            {
+                policyBuilder.RequireClaim("todo:read-write", "true");
+            });
+
+            options.AddPolicy("todo:max-count", policyBuilder =>
             {
                 policyBuilder.AddRequirements(new MaxTodoCountRequirement(5));
             });
@@ -114,6 +129,7 @@ public static class ProgramExtensions
 
         app.UseHttpsRedirection();
 
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();

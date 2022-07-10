@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
-
+/// <summary>
+/// Endpoint to get customer for a given unique identifier
+/// </summary>
 [Endpoint(TagName = "Customer", OperatinId = nameof(GetCustomerById))]
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Customer))]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -10,10 +12,13 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-public class GetCustomerById : GetByIdEndpoint<IResult>
+public class GetCustomerById : GetByIdEndpoint<Customer>
 {
     private readonly ICustomerRepository _customerRepository;
-
+    /// <summary>
+    /// Contructor that accepts customer repository
+    /// </summary>
+    /// <param name="customerRepository"></param>
     public GetCustomerById(ICustomerRepository customerRepository)
     {
         _customerRepository = customerRepository;
@@ -33,13 +38,9 @@ public class GetCustomerById : GetByIdEndpoint<IResult>
     /// </remarks>
     /// <response code="200">Returns the customer for specified id</response>
     /// <response code="404">Customer not found</response>
-    public override Task<IResult> SendAsync(int id)
+    public override Task<Customer> SendAsync(int id)
     {
-        var customer = _customerRepository.GetById(id);
-
-        if (customer == null) return Task.FromResult(NotFound());
-
-        return Task.FromResult(Ok(customer));
+        return Task.FromResult(_customerRepository.GetById(id));
     }
 }
 
