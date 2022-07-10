@@ -1,6 +1,6 @@
 ﻿namespace MinimalEndpoints;
 
-public abstract class Endpoint<TResponse> : IEndpoint
+public abstract class Endpoint<TResponse> : EndpointBase, IEndpoint
 {
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }
@@ -14,7 +14,7 @@ public abstract class Endpoint<TResponse> : IEndpoint
     }
 }
 
-public abstract class Endpoint<TRequest, TResponse> : IEndpoint
+public abstract class Endpoint<TRequest, TResponse> : EndpointBase, IEndpoint
 {
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }

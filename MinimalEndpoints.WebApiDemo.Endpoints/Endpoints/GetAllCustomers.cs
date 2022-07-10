@@ -6,7 +6,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Customer>))]
 [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
 [Endpoint(TagName = "Customer", OperatinId = nameof(GetAllCustomers))]
-public class GetAllCustomers : IEndpoint
+public class GetAllCustomers : EndpointBase, IEndpoint
 {
     private readonly ICustomerRepository _customerRepository;
 
@@ -25,11 +25,11 @@ public class GetAllCustomers : IEndpoint
     /// Get all available customers
     /// </summary>
     /// <returns></returns>
-    private Task<IResult> GetCustomers()
+    private IResult GetCustomers()
     {
-        var result = Results.Ok(_customerRepository.GetAll());
+        var customers = _customerRepository.GetAll();
 
-        return Task.FromResult(result);
+        return Ok(customers);
     }
 }
 

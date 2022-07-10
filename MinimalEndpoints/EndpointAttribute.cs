@@ -1,6 +1,6 @@
 ﻿namespace MinimalEndpoints;
 
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public class EndpointAttribute : Attribute
 {
     public string? TagName { get; set; }

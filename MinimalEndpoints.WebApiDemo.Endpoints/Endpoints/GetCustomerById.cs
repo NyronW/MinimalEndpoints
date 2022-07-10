@@ -10,7 +10,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-public class GetCustomerById : GetByIdEndpoint<Customer>
+public class GetCustomerById : GetByIdEndpoint<IResult>
 {
     private readonly ICustomerRepository _customerRepository;
 
@@ -33,9 +33,13 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
     /// </remarks>
     /// <response code="200">Returns the customer for specified id</response>
     /// <response code="404">Customer not found</response>
-    public override Task<Customer> SendAsync(int id)
+    public override Task<IResult> SendAsync(int id)
     {
-        return Task.FromResult(_customerRepository.GetById(id));
+        var customer = _customerRepository.GetById(id);
+
+        if (customer == null) return Task.FromResult(NotFound());
+
+        return Task.FromResult(Ok(customer));
     }
 }
 
