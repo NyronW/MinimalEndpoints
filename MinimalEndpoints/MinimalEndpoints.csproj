@@ -7,6 +7,10 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Authors>Nyron Williams</Authors>
     <Description>A light weight abstraction over the ASP.NET minimal API</Description>
+    <PackageId>MinimalEndpoints</PackageId>
+    <PackageProjectUrl></PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NyronW/MinimalEndpoints</RepositoryUrl>
+    <PackageTags>ASP.NET; Minimal API; Endpoint; REPR; C#; .NET</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
