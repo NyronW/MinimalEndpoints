@@ -219,7 +219,7 @@ public class DeleteTodoItem : EndpointBase, IEndpoint
 
 ```
 
-### How support OpenAPI/Swagger with MinimalEndpoints?
+### How to support OpenAPI/Swagger with MinimalEndpoints?
 
 Your endpoints will be visible via Swagger with no extra effort, however you can used the EndpointAttribute class to customize how your endpoints are exposed via Swagger.
 
