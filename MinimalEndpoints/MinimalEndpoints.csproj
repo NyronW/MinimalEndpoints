@@ -11,6 +11,7 @@
     <PackageProjectUrl></PackageProjectUrl>
     <RepositoryUrl>https://github.com/NyronW/MinimalEndpoints</RepositoryUrl>
     <PackageTags>ASP.NET; Minimal API; Endpoint; REPR; C#; .NET</PackageTags>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
