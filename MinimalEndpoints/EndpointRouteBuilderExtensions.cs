@@ -11,16 +11,46 @@ namespace MinimalEndpoints;
 
 public static class EndpointRouteBuilderExtensions
 {
+    /// <summary>
+    /// Configure Minimal endpints
+    /// </summary>
+    /// <param name="builder">EndpointRouteBuilder</param>
+    /// <returns>EndpointRouteBuilder</returns>
     public static IEndpointRouteBuilder UseMinimalEndpoints(this IEndpointRouteBuilder builder)
+        => builder.UseMinimalEndpoints(configuration: null);
+
+    /// <summary>
+    /// Configure Minimal endpints
+    /// </summary>
+    /// <param name="builder">EndpointRouteBuilder</param>
+    /// <param name="configuration">Endpoint configuration object</param>
+    /// <returns>EndpointRouteBuilder</returns>
+    public static IEndpointRouteBuilder UseMinimalEndpoints(this IEndpointRouteBuilder builder, Action<EndpointConfiguration>? configuration)
     {
         var app = builder.CreateApplicationBuilder();
 
         var endpoints = app.ApplicationServices.GetServices<IEndpoint>();
         if (endpoints == null) return builder;
 
+
+        var serviceConfig = new EndpointConfiguration();
+        configuration?.Invoke(serviceConfig);
+
         foreach (var endpoint in endpoints)
         {
-            var mapping = builder.MapMethods(endpoint.Pattern, new[] { endpoint.Method.Method }, endpoint.Handler);
+            var pattern = endpoint.Pattern;
+
+            if (!string.IsNullOrEmpty(serviceConfig.DefaultRoutePrefix))
+                pattern = $"{serviceConfig.DefaultRoutePrefix.TrimEnd('/')}/{pattern.TrimStart('/')}";
+
+            var tagAttr = (EndpointAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EndpointAttribute)).FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(tagAttr?.RoutePrefixOverride))
+            {
+                pattern = $"{tagAttr.RoutePrefixOverride.TrimEnd('/')}/{endpoint.Pattern.TrimStart('/')}";
+            }
+
+            var mapping = builder.MapMethods(pattern, new[] { endpoint.Method.Method }, endpoint.Handler);
 
             var producesRespAttributes = (ProducesResponseTypeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(ProducesResponseTypeAttribute));
             foreach (var attr in producesRespAttributes)
@@ -64,7 +94,6 @@ public static class EndpointRouteBuilderExtensions
                     mapping.Accepts(acceptAttr.Type, acceptAttr.IsOptional, acceptAttr.ContentType);
             }
 
-            var tagAttr = (EndpointAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EndpointAttribute)).FirstOrDefault();
             if (tagAttr == null) continue;
 
             if (tagAttr.ExcludeFromDescription) mapping.ExcludeFromDescription();

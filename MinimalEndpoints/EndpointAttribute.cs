@@ -3,7 +3,8 @@
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public class EndpointAttribute : Attribute
 {
-    public string? TagName { get; set; }
-    public string? OperatinId { get; set; }
-    public bool ExcludeFromDescription { get; set; }
+    public string? TagName { get; set; } = string.Empty;
+    public string? OperatinId { get; set; } = null;
+    public bool ExcludeFromDescription { get; set; } = false;
+    public string? RoutePrefixOverride { get; set; } = null;
 }

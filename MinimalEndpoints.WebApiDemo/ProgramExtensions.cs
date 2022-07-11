@@ -134,7 +134,10 @@ public static class ProgramExtensions
 
         app.MapControllers();
 
-        app.UseMinimalEndpoints();
+        app.UseMinimalEndpoints(o =>
+        {
+            o.DefaultRoutePrefix = "/api/v1";
+        });
 
         return app;
     }
