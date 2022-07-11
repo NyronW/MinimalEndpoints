@@ -134,7 +134,7 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
 
 ### How do I secure MinimalEndpoints?
 
-WebCommandLine leverages existing ASP.NET Authorization features and requires little effort for integration. 
+MinimalEndpoints leverages existing ASP.NET Authorization features and requires little effort for integration. 
 
 ```csharp
 
