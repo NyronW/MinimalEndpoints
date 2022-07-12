@@ -77,10 +77,13 @@ public static class EndpointRouteBuilderExtensions
             }
 
             var anonAttr = (AllowAnonymousAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AllowAnonymousAttribute)).FirstOrDefault();
-            if (anonAttr != null) mapping.AllowAnonymous();
-
-            var authorizeAttributes = (AuthorizeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AuthorizeAttribute));
-            foreach (var authData in authorizeAttributes) mapping.RequireAuthorization(authData);
+            if (anonAttr != null)
+                mapping.AllowAnonymous();
+            else
+            {
+                var authorizeAttributes = (AuthorizeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AuthorizeAttribute));
+                foreach (var authData in authorizeAttributes) mapping.RequireAuthorization(authData);
+            }
 
             var corsAttributes = (EnableCorsAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EnableCorsAttribute));
             foreach (var corsAttr in corsAttributes) mapping.RequireCors(corsAttr.PolicyName);

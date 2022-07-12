@@ -6,6 +6,13 @@ namespace MinimalEndpoints;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="services"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
+        => services.AddMinimalEndpoints(Array.Empty<Assembly>());
+    /// <summary>
     /// Registers endpoint from assemblies that contain specified types
     /// </summary>
     /// <param name="services">IServiceCollection instance</param>
@@ -15,7 +22,7 @@ public static class ServiceCollectionExtensions
         => services.AddMinimalEndpoints(endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
 
     /// <summary>
-    /// Registers commands from the specified assemblies
+    /// Registers endpoints from the specified assemblies
     /// </summary>
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>

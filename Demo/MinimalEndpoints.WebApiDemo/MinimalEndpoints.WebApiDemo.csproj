@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MinimalEndpoints.WebApiDemo.Endpoints\MinimalEndpoints.WebApiDemo.Endpoints.csproj" />
-    <ProjectReference Include="..\MinimalEndpoints\MinimalEndpoints.csproj" />
+    <ProjectReference Include="..\..\MinimalEndpoints\MinimalEndpoints.csproj" />
   </ItemGroup>
 
 </Project>

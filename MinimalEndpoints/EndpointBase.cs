@@ -5,7 +5,6 @@ namespace MinimalEndpoints;
 
 public abstract class EndpointBase
 {
-
     public virtual IResult Ok()
     {
         return Results.Ok();
@@ -19,6 +18,11 @@ public abstract class EndpointBase
     public virtual IResult Created<T>(string url, T value)
     {
         return Results.Created(url, value);
+    }
+
+    public virtual IResult CreatedAtRoute(string routeName, object? routeValues = null, object? value = null)
+    {
+        return Results.CreatedAtRoute(routeName, routeValues, value);
     }
 
     public virtual IResult NoContent()

@@ -5,19 +5,15 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints", "MinimalEndpoints\MinimalEndpoints.csproj", "{A4310D4F-F4D5-45A3-BF54-0849F93C9014}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints.WebApiDemo", "Demo\MinimalEndpoints.WebApiDemo\MinimalEndpoints.WebApiDemo.csproj", "{04F0B672-9D06-4271-9CA9-BE97320B5C3B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints.WebApiDemo", "MinimalEndpoints.WebApiDemo\MinimalEndpoints.WebApiDemo.csproj", "{04F0B672-9D06-4271-9CA9-BE97320B5C3B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints.WebApiDemo.Endpoints", "Demo\MinimalEndpoints.WebApiDemo.Endpoints\MinimalEndpoints.WebApiDemo.Endpoints.csproj", "{8DC9B501-161E-4ED5-B48E-87A58077158C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints.WebApiDemo.Endpoints", "MinimalEndpoints.WebApiDemo.Endpoints\MinimalEndpoints.WebApiDemo.Endpoints.csproj", "{8DC9B501-161E-4ED5-B48E-87A58077158C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Benchmark", "Benchmark", "{DEF24E41-0B32-41A1-83B4-9C048B101EEF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Runner", "Benchmark\Runner\Runner.csproj", "{C473309F-0B1E-4158-8992-BE9F0C284A0F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Runner", "Benchmark\Runner\Runner.csproj", "{C473309F-0B1E-4158-8992-BE9F0C284A0F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demo", "Demo", "{750592F7-98C6-42D5-BF6D-8AB1EDC105AB}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MvcControllers", "Benchmark\MvcController\MvcControllers.csproj", "{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalEndpointsBench", "Benchmark\MinimalEndpoints\MinimalEndpointsBench.csproj", "{53A2D61A-EA1E-415F-8EEB-52388DBFC32F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,14 +37,6 @@ Global
 		{C473309F-0B1E-4158-8992-BE9F0C284A0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C473309F-0B1E-4158-8992-BE9F0C284A0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C473309F-0B1E-4158-8992-BE9F0C284A0F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{53A2D61A-EA1E-415F-8EEB-52388DBFC32F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{53A2D61A-EA1E-415F-8EEB-52388DBFC32F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{53A2D61A-EA1E-415F-8EEB-52388DBFC32F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{53A2D61A-EA1E-415F-8EEB-52388DBFC32F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -57,8 +45,6 @@ Global
 		{04F0B672-9D06-4271-9CA9-BE97320B5C3B} = {750592F7-98C6-42D5-BF6D-8AB1EDC105AB}
 		{8DC9B501-161E-4ED5-B48E-87A58077158C} = {750592F7-98C6-42D5-BF6D-8AB1EDC105AB}
 		{C473309F-0B1E-4158-8992-BE9F0C284A0F} = {DEF24E41-0B32-41A1-83B4-9C048B101EEF}
-		{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1} = {DEF24E41-0B32-41A1-83B4-9C048B101EEF}
-		{53A2D61A-EA1E-415F-8EEB-52388DBFC32F} = {DEF24E41-0B32-41A1-83B4-9C048B101EEF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3F600965-3A8B-4072-8BB9-9F46FA815C94}

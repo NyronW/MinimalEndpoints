@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MinimalEndpoints\MinimalEndpoints.csproj" />
+    <ProjectReference Include="..\..\MinimalEndpoints\MinimalEndpoints.csproj" />
   </ItemGroup>
 
 </Project>
