@@ -5,14 +5,14 @@ using MinimalEndpoints.WebApiDemo.Services;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 
-    [Authorize(Policy = "todo:read-write")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [Endpoint(TagName = "Todo", OperatinId = nameof(CreateTodoItemV2), RoutePrefixOverride = "/api/v2")]
-    public class CreateTodoItemV2 : Endpoint<string, IResult>
+[Authorize(Policy = "todo:read-write")]
+[ProducesResponseType(StatusCodes.Status201Created)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
+[ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+[Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItemV2), RoutePrefixOverride = "/api/v2")]
+public class CreateTodoItemV2 : Endpoint<string, IResult>
 {
     private readonly ITodoRepository _repository;
 

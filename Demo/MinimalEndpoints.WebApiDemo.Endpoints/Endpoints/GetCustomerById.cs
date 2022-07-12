@@ -5,7 +5,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 /// <summary>
 /// Endpoint to get customer for a given unique identifier
 /// </summary>
-[Endpoint(TagName = "Customer", OperatinId = nameof(GetCustomerById))]
+[Endpoint(TagName = "Customer", OperationId = nameof(GetCustomerById))]
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Customer))]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]

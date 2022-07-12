@@ -6,7 +6,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<TodoItem>))]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-[Endpoint(TagName = "Todo", OperatinId = nameof(GetAllTodoItems))]
+[Endpoint(TagName = "Todo", OperationId = nameof(GetAllTodoItems))]
 public class GetAllTodoItems : IEndpoint
 {
     private readonly ITodoRepository _repository;

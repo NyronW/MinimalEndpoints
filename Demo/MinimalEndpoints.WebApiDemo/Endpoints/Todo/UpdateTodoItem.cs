@@ -8,7 +8,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-[Endpoint(TagName = "Todo", OperatinId = nameof(UpdateTodoItem))]
+[Endpoint(TagName = "Todo", OperationId = nameof(UpdateTodoItem))]
 public class UpdateTodoItem : IEndpoint
 {
     private readonly ITodoRepository _repository;

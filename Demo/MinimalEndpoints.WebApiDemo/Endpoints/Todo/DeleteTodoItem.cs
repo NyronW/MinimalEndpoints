@@ -11,7 +11,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-[Endpoint(TagName = "Todo", OperatinId = nameof(DeleteTodoItem))]
+[Endpoint(TagName = "Todo", OperationId = nameof(DeleteTodoItem))]
 public class DeleteTodoItem : EndpointBase, IEndpoint
 {
     private readonly ITodoRepository _repository;

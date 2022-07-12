@@ -103,7 +103,7 @@ public static class EndpointRouteBuilderExtensions
 
             if (!string.IsNullOrEmpty(tagAttr.TagName)) mapping.WithTags(tagAttr.TagName);
 
-            if (!string.IsNullOrEmpty(tagAttr.OperatinId)) mapping.WithName(tagAttr.OperatinId);
+            if (!string.IsNullOrEmpty(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
         }
 
         return builder;

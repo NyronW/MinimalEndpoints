@@ -4,7 +4,7 @@
 public class EndpointAttribute : Attribute
 {
     public string? TagName { get; set; } = string.Empty;
-    public string? OperatinId { get; set; } = null;
+    public string? OperationId { get; set; } = null;
     public bool ExcludeFromDescription { get; set; } = false;
     public string? RoutePrefixOverride { get; set; } = null;
 }
