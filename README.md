@@ -106,11 +106,11 @@ public class DeleteTodoItem : EndpointBase, IEndpoint
 
 You can also inherit your endpoints from any of generic classes that implements the IEndPoint interface.
 
-[Endpoint<TResponse>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints without a request.
+[Endpoint\<TResponse\>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints without a request.
 
 [Endpoint<TRequest, TResponse>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints with both a request and response
 
-[GetByIdEndpoint<TResponse>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints that getting an object by its integer id
+[GetByIdEndpoint\<TResponse\>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints that getting an object by its integer id
 
 ```csharp
 
@@ -134,7 +134,7 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
 
 ### How do I secure MinimalEndpoints?
 
-WebCommandLine leverages existing ASP.NET Authorization features and requires little effort for integration. 
+MinimalEndpoints leverages existing ASP.NET Authorization features and requires little effort for integration. 
 
 ```csharp
 
