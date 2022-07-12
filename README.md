@@ -106,11 +106,11 @@ public class DeleteTodoItem : EndpointBase, IEndpoint
 
 You can also inherit your endpoints from any of generic classes that implements the IEndPoint interface.
 
-[Endpoint\<TResponse\>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints without a request.
+* [Endpoint\<TResponse\>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints without a request.
 
-[Endpoint<TRequest, TResponse>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints with both a request and response
+* [Endpoint<TRequest, TResponse>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints with both a request and response
 
-[GetByIdEndpoint\<TResponse\>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints that getting an object by its integer id
+* [GetByIdEndpoint\<TResponse\>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Endpoint.cs) is used for endpoints that getting an object by its integer id
 
 ```csharp
 
@@ -221,9 +221,16 @@ public class DeleteTodoItem : EndpointBase, IEndpoint
 
 ### How to support OpenAPI/Swagger with MinimalEndpoints?
 
-Your endpoints will be visible via Swagger with no extra effort, however you can used the EndpointAttribute class to customize how your endpoints are exposed via Swagger.
+Your endpoints will be visible via Swagger with no extra effort, however you can used the [EndpointAttribute](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/EndpointAttribute.cs) class to customize how your endpoints are exposed via Swagger.
+
+* TagName: This property affects how your endpoints are grouped on the Swagger UI page.
+* OperationId: This propery is used to identitfy each endpoint. This is also used when creating calling Results.CreateAtRoute(string routeName, object routeValue).
+* ExcludeFromDescription: Set this property to true if you want don't want to list your endpoint on the Swagger UI page
+* RoutePrefixOverride: This property is used to override the default route prefix, if it was configured at startup.
 
 You can improve your endpoint documentation by using comments to enrich the Swagger UI. You can follow the instructions from [this](https://code-maze.com/swagger-ui-asp-net-core-web-api/) blog to implement cooment support. 
+
+
 
 ```csharp
 
@@ -275,3 +282,63 @@ You can also use the ProducesResponseType attribute to provide details of the va
 ### How do I enable CORS with MinimalEndpoints?
 
 You can simply add the EnableCors attribute to your endpoint and add the CORS middleware during your application startup.
+
+### Setting route prefix?
+
+You can set the route prefix that is used by all your endpoint during application startup. The example below sets the defautl route prefix to /api/v1.
+
+```csharp
+//...
+var builder = WebApplication.CreateBuilder(args);
+
+var app = builder.Build();
+
+//..
+app.UseMinimalEndpoints(o =>
+{
+    o.DefaultRoutePrefix = "/api/v1";
+});
+
+```
+
+You can override the default route prefix for an enpoint by adding the EndpointAttribute to the endpoint and setting the RoutePrefixOverride property to the desired route prefix. This can be used to support endpoint versioning.
+
+```csharp
+[Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItemV2), RoutePrefixOverride = "/api/v2")]
+public class CreateTodoItemV2 : Endpoint<string, IResult>
+{
+    private readonly ITodoRepository _repository;
+
+    public CreateTodoItemV2(ITodoRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public override string Pattern => "/todos";
+
+    public override HttpMethod Method => HttpMethod.Post;
+
+    /// <summary>
+    /// This is version 2 of the create todo endpoint
+    /// </summary>
+    /// <param name="description">Todo description</param>
+    /// <returns>New created item</returns>
+    public override async Task<IResult> SendAsync(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return Results.BadRequest("description is required");
+        }
+
+        if (description.Length < 5)
+        {
+            return Results.BadRequest("description is length must be greater than or equal to five characters");
+        }
+
+        var id = await _repository.CreateAsync(description);
+
+        return Results.Created($"/endpoints/todos/{id}", new TodoItem(id, description, false));
+    }
+}
+
+```
