@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
+using System.Text.Json;
 
 namespace MinimalEndpoints.WebApiDemo.Authorization
 {
@@ -8,22 +9,42 @@ namespace MinimalEndpoints.WebApiDemo.Authorization
         private readonly AuthorizationMiddlewareResultHandler defaultHandler = new();
 
         public async Task HandleAsync(RequestDelegate next, HttpContext context,
-            AuthorizationPolicy policy, PolicyAuthorizationResult authorizeResult)
+            AuthorizationPolicy policy, PolicyAuthorizationResult policyAuthorization)
         {
-            if (authorizeResult.Forbidden)
+            if (policyAuthorization.Forbidden && policyAuthorization.AuthorizationFailure != null)
             {
-                var reason = authorizeResult.AuthorizationFailure?.FailureReasons.FirstOrDefault();
-                var message = reason?.Message;
-
-                if (!string.IsNullOrWhiteSpace(message))
+                if (policyAuthorization.AuthorizationFailure.FailureReasons
+                    .Any(reason => typeof(IHaveProblemDetails).IsAssignableFrom(reason.GetType())))
                 {
-                    context.Response.ContentType = "text/plain";
-                    await context.Response.WriteAsync(message);
+                    var reason = (IHaveProblemDetails)policyAuthorization.AuthorizationFailure
+                        .FailureReasons.First(reason => typeof(IHaveProblemDetails).IsAssignableFrom(reason.GetType()));
+
+                    var problemDetail = new
+                    {
+                        Type = reason.Type,
+                        Title = reason.Title,
+                        Detail = reason.Detail,
+                        Status = reason.Status,
+                        Instance = reason.Instance
+                    };
+
+                    context.Response.ContentType = "application/problem+json";
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetail));
                     return;
+                }
+                else
+                {
+                    var message = policyAuthorization.AuthorizationFailure.FailureReasons.FirstOrDefault()?.Message;
+                    if(message is { })
+                    {
+                        context.Response.ContentType = "text/plain";
+                        await context.Response.WriteAsync(message);
+                        return;
+                    }
                 }
             }
 
-            await defaultHandler.HandleAsync(next, context, policy, authorizeResult);
+            await defaultHandler.HandleAsync(next, context, policy, policyAuthorization);
         }
     }
 }
