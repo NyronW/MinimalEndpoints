@@ -14,10 +14,10 @@ namespace MinimalEndpoints.WebApiDemo.Authorization
             if (policyAuthorization.Forbidden && policyAuthorization.AuthorizationFailure != null)
             {
                 if (policyAuthorization.AuthorizationFailure.FailureReasons
-                    .Any(reason => typeof(IHaveProblemDetails).IsAssignableFrom(reason.GetType())))
+                    .Any(reason => reason is IHaveProblemDetails))
                 {
                     var reason = (IHaveProblemDetails)policyAuthorization.AuthorizationFailure
-                        .FailureReasons.First(reason => typeof(IHaveProblemDetails).IsAssignableFrom(reason.GetType()));
+                        .FailureReasons.First(reason => reason is IHaveProblemDetails);
 
                     var problemDetail = new
                     {

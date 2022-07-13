@@ -117,7 +117,7 @@ public static class ProgramExtensions
 
             options.AddPolicy("todo:max-count", policyBuilder =>
             {
-                policyBuilder.AddRequirements(new MaxTodoCountRequirement(1));
+                policyBuilder.AddRequirements(new MaxTodoCountRequirement(5));
             });
         });
 
