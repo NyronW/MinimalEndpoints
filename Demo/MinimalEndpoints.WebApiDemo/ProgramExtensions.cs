@@ -103,6 +103,8 @@ public static class ProgramExtensions
 
         builder.Services.AddTransient<IAuthorizationHandler, MaxTodoItemsRequirementHandler>();
 
+        builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, DefaultAuthorizationMiddlewareResultHandler>();
+
         builder.Services.AddAuthorization(options =>
         {
             options.AddPolicy("todo:read-write", policyBuilder =>
@@ -112,7 +114,7 @@ public static class ProgramExtensions
 
             options.AddPolicy("todo:max-count", policyBuilder =>
             {
-                policyBuilder.AddRequirements(new MaxTodoCountRequirement(5));
+                policyBuilder.AddRequirements(new MaxTodoCountRequirement(1));
             });
         });
 

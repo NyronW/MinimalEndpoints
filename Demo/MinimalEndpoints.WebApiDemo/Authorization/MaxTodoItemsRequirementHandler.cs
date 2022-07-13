@@ -14,13 +14,14 @@ public class MaxTodoItemsRequirementHandler : AuthorizationHandler<MaxTodoCountR
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, MaxTodoCountRequirement requirement)
     {
-        if (requirement == null) ;
+        if (requirement == null) return;
 
         var items = await _repository.GetAllAsync();
 
         if (requirement.MaxItems <= items.Count())
         {
-            context.Fail();
+            context.Fail(new AuthorizationFailureReason(this,"Maximum number of todo items reached. Please remove some items and try again"));
+            return;
         }
         
         context.Succeed(requirement);
