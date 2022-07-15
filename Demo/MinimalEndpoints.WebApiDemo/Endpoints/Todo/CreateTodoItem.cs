@@ -8,7 +8,6 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [Authorize(Policy = "todo:read-write")]
 [Authorize(Policy = "todo:max-count")]
 [ProducesResponseType(StatusCodes.Status201Created)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]

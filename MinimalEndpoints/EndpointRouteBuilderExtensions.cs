@@ -32,7 +32,6 @@ public static class EndpointRouteBuilderExtensions
         var endpoints = app.ApplicationServices.GetServices<IEndpoint>();
         if (endpoints == null) return builder;
 
-
         var serviceConfig = new EndpointConfiguration();
         configuration?.Invoke(serviceConfig);
 
@@ -52,7 +51,14 @@ public static class EndpointRouteBuilderExtensions
 
             var mapping = builder.MapMethods(pattern, new[] { endpoint.Method.Method }, endpoint.Handler);
 
-            var producesRespAttributes = (ProducesResponseTypeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(ProducesResponseTypeAttribute));
+            var globalProduces = serviceConfig.Filters.Where(f => f is ProducesResponseTypeAttribute)
+                .Cast<ProducesResponseTypeAttribute>();
+
+            var producesRespAttributes = ((ProducesResponseTypeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(ProducesResponseTypeAttribute)))
+                    .ToList();
+
+            if (globalProduces.Any()) producesRespAttributes.AddRange(globalProduces);
+
             foreach (var attr in producesRespAttributes)
             {
                 if (attr.Type == typeof(void))
@@ -96,6 +102,9 @@ public static class EndpointRouteBuilderExtensions
                 else
                     mapping.Accepts(acceptAttr.Type, acceptAttr.IsOptional, acceptAttr.ContentType);
             }
+
+
+
 
             if (tagAttr == null) continue;
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MinimalEndpoints.WebApiDemo.Authorization;
@@ -142,6 +143,7 @@ public static class ProgramExtensions
         app.UseMinimalEndpoints(o =>
         {
             o.DefaultRoutePrefix = "/api/v1";
+            o.Filters.Add(new ProducesResponseTypeAttribute(StatusCodes.Status400BadRequest));
         });
 
         return app;
