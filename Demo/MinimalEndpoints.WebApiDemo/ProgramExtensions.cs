@@ -34,7 +34,26 @@ public static class ProgramExtensions
             {
                 Title = "Minimal Endpoint API Demo",
                 Version = "v1",
-                Description = "An API to perform Customer operations",
+                Description = "An API developed using MinimalEndpoint",
+                TermsOfService = new Uri("https://example.com/terms"),
+                Contact = new OpenApiContact
+                {
+                    Name = "Nyron Williams",
+                    //Email = "nyronwilliams@gmail.com",
+                    Url = new Uri("https://github.com/nyronw"),
+                },
+                License = new OpenApiLicense
+                {
+                    Name = "Minimal Endpoint  License",
+                    Url = new Uri("https://example.com/license"),
+                }
+            });
+
+            c.SwaggerDoc("v2", new OpenApiInfo
+            {
+                Title = "Minimal Endpoint API Demo",
+                Version = "v2",
+                Description = "Version 2 of API developed using MinimalEndpoint",
                 TermsOfService = new Uri("https://example.com/terms"),
                 Contact = new OpenApiContact
                 {
@@ -131,6 +150,7 @@ public static class ProgramExtensions
         app.UseSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "Minimal Endpoint API Demo");
+            options.SwaggerEndpoint("/swagger/v2/swagger.json", "Minimal Endpoint API Demo (V2)");
         });
 
         app.UseHttpsRedirection();
@@ -143,6 +163,7 @@ public static class ProgramExtensions
         app.UseMinimalEndpoints(o =>
         {
             o.DefaultRoutePrefix = "/api/v1";
+            o.DefaultGroupName = "v1";
             o.Filters.Add(new ProducesResponseTypeAttribute(StatusCodes.Status400BadRequest));
         });
 

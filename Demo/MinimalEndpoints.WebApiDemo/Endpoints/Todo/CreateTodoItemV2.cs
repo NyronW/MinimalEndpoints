@@ -11,7 +11,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-[Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItemV2), RoutePrefixOverride = "/api/v2")]
+[Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItemV2), RoutePrefixOverride = "/api/v2", GroupName = "v2")]
 public class CreateTodoItemV2 : Endpoint<string, IResult>
 {
     private readonly ITodoRepository _repository;

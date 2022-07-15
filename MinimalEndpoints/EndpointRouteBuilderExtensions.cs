@@ -103,9 +103,6 @@ public static class EndpointRouteBuilderExtensions
                     mapping.Accepts(acceptAttr.Type, acceptAttr.IsOptional, acceptAttr.ContentType);
             }
 
-
-
-
             if (tagAttr == null) continue;
 
             if (tagAttr.ExcludeFromDescription) mapping.ExcludeFromDescription();
@@ -113,6 +110,11 @@ public static class EndpointRouteBuilderExtensions
             if (!string.IsNullOrEmpty(tagAttr.TagName)) mapping.WithTags(tagAttr.TagName);
 
             if (!string.IsNullOrEmpty(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
+
+            if (!string.IsNullOrEmpty(tagAttr.GroupName))
+                mapping.WithGroupName(tagAttr.GroupName);
+            else if (serviceConfig.DefaultGroupName is { })
+                mapping.WithGroupName(serviceConfig.DefaultGroupName);
         }
 
         return builder;

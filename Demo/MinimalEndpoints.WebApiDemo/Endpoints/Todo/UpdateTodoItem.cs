@@ -28,20 +28,15 @@ public class UpdateTodoItem : IEndpoint
     /// Updates a todo item completed status
     /// </summary>
     /// <param name="id">Todo unique identifier</param>
-    /// <param name="todo">Todo item to be updated</param>
+    /// <param name="completed">Is the task completed</param>
     /// <returns></returns>
     /// <response code="200">Item updated sucessfully</response>
     /// <response code="400">Invalid data passed from client</response>
     /// <response code="404">Item not found</response>
     /// <response code="500">Internal server error occured</response>
-    private async Task<IResult> UpdateAsync(string id, TodoItem todo)
+    private async Task<IResult> UpdateAsync(string id, bool completed)
     {
-        if (todo == null || !todo.completed.HasValue)
-        {
-            return Results.BadRequest("completed is required");
-        }
-
-        await _repository.Update(id, todo.completed.Value);
+        await _repository.Update(id, completed);
 
         return Results.Ok();
     }
