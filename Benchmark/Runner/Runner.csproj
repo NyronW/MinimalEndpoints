@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FastEndpoints\FastEndpoints\FastEndpointsBench.csproj" />
     <ProjectReference Include="..\MinimalEndpoints\MinimalEndpointsBench.csproj" />
     <ProjectReference Include="..\MvcController\MvcControllers.csproj" />
   </ItemGroup>

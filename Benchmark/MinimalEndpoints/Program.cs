@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Logging.ClearProviders();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMinimalEndpoints();
 builder.Services.AddSingleton<IValidator<Request>, Validator>();
 
@@ -16,6 +17,7 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 
+app.UseMinimalEndpoints();
 
 app.Run();
 

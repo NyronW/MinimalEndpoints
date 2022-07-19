@@ -10,6 +10,9 @@ public class Benchmarks
 {
     private static HttpClient MvcClient { get; } = new WebApplicationFactory<MvcControllers.Program>().CreateClient();
     private static HttpClient MinimalEndpointClient { get; } = new WebApplicationFactory<MinimalEndpointsBench.Program>().CreateClient();
+    private static HttpClient FastEndpointClient { get; } = new WebApplicationFactory<FastEndpointsBench.Program>().CreateClient();
+
+
     private static readonly StringContent Payload = new(
         JsonSerializer.Serialize(new
         {
@@ -56,6 +59,19 @@ public class Benchmarks
         };
 
         return MinimalEndpointClient.SendAsync(msg);
+    }
+
+    [Benchmark]
+    public Task FastEndpoints()
+    {
+        var msg = new HttpRequestMessage()
+        {
+            Method = HttpMethod.Post,
+            RequestUri = new Uri($"{FastEndpointClient.BaseAddress}benchmark/ok/123"),
+            Content = Payload
+        };
+
+        return FastEndpointClient.SendAsync(msg);
     }
 }
 

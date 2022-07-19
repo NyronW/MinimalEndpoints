@@ -17,7 +17,7 @@ public static class ProgramExtensions
     {
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
-        builder.Services.AddMinimalEndpoints(true, typeof(ITodoRepository).Assembly, typeof(ICustomerRepository).Assembly);
+        builder.Services.AddMinimalEndpoints(typeof(ITodoRepository).Assembly, typeof(ICustomerRepository).Assembly);
 
         builder.Services.AddCustomerServices(); //Add services for support class library
 
@@ -122,7 +122,7 @@ public static class ProgramExtensions
 
             options.AddPolicy("todo:max-count", policyBuilder =>
             {
-                policyBuilder.AddRequirements(new MaxTodoCountRequirement(5));
+                policyBuilder.AddRequirements(new MaxTodoCountRequirement(0));
             });
         });
 
@@ -150,6 +150,7 @@ public static class ProgramExtensions
             o.DefaultRoutePrefix = "/api/v1";
             o.DefaultGroupName = "v1";
             o.Filters.Add(new ProducesResponseTypeAttribute(StatusCodes.Status400BadRequest));
+            o.UseAuthorizationResultHandler();
         });
 
         return app;

@@ -20,7 +20,8 @@ public class EndpointAuthorizationMiddlewareResultHandler : IAuthorizationMiddle
     public async Task HandleAsync(RequestDelegate next, HttpContext httpContext,
         AuthorizationPolicy policy, PolicyAuthorizationResult policyAuthorizationResult)
     {
-        if (policyAuthorizationResult.Forbidden && policyAuthorizationResult.AuthorizationFailure != null)
+        if (EndpointConfiguration.UseEndpointAuthorizationMiddlewareResultHandler &&  policyAuthorizationResult.Forbidden 
+            && policyAuthorizationResult.AuthorizationFailure != null)
         {
             if (policyAuthorizationResult.AuthorizationFailure.FailureReasons
                 .Any(reason => reason is IHaveProblemDetails))

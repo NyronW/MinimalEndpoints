@@ -9,36 +9,29 @@ namespace MinimalEndpoints;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
-        => services.AddMinimalEndpoints(false);
-
     /// <summary>
     /// 
     /// </summary>
     /// <param name="services"></param>
     /// <returns></returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler = false)
-        => services.AddMinimalEndpoints(registerAuthResultsHandler);
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
+        => services.AddMinimalEndpoints(new List<Assembly>());
     /// <summary>
     /// Registers endpoint from assemblies that contain specified types
     /// </summary>
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="endpointAssemblyMarkerTypes">Marker type used to scan assembly</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler = false, params Type[] endpointAssemblyMarkerTypes)
-        => services.AddMinimalEndpoints(registerAuthResultsHandler, endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
-
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Assembly[] assemblies)
-        => services.AddMinimalEndpoints(false, assemblies.Select(a => a));
-
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Type[] endpointAssemblyMarkerTypes)
+        => services.AddMinimalEndpoints(endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
     /// <summary>
     /// Registers endpoints from the specified assemblies
     /// </summary>
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler = false, params Assembly[] assemblies)
-        => services.AddMinimalEndpoints(registerAuthResultsHandler, assemblies.Select(a => a));
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Assembly[] assemblies)
+        => services.AddMinimalEndpoints(assemblies.Select(a => a));
 
     /// <summary>
     /// Registers commands from the specified assemblies
@@ -46,7 +39,7 @@ public static class ServiceCollectionExtensions
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler, IEnumerable<Assembly> assemblies)
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, IEnumerable<Assembly> assemblies)
     {
         if (assemblies == null || !assemblies.Any())
         {
@@ -73,15 +66,14 @@ public static class ServiceCollectionExtensions
             }
         }
 
-        RegisterMinimalEndpointServices(services, registerAuthResultsHandler ?? false);
+        RegisterMinimalEndpointServices(services);
 
         return services;
     }
 
-    private static void RegisterMinimalEndpointServices(IServiceCollection services, bool registerAuthResultsHandler)
+    private static void RegisterMinimalEndpointServices(IServiceCollection services)
     {
-        if (registerAuthResultsHandler)
-            services.AddSingleton<IAuthorizationMiddlewareResultHandler, EndpointAuthorizationMiddlewareResultHandler>();
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, EndpointAuthorizationMiddlewareResultHandler>();
 
         services.AddTransient<IResponseNegotiator, JsonResponseNegotiator>();
         services.AddTransient<IResponseNegotiator, XmlResponseNegotiator>();
