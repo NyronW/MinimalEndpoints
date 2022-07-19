@@ -1,25 +1,35 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using MinimalEndpoints.Authorization;
+using MinimalEndpoints.Extensions.Http.ContentNegotiation;
+using MinimalEndpoints.Extensions.Http.ModelBinding;
 using System.Reflection;
 
 namespace MinimalEndpoints;
 
 public static class ServiceCollectionExtensions
 {
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
+        => services.AddMinimalEndpoints(false);
+
     /// <summary>
     /// 
     /// </summary>
     /// <param name="services"></param>
     /// <returns></returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
-        => services.AddMinimalEndpoints(Array.Empty<Assembly>());
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler = false)
+        => services.AddMinimalEndpoints(registerAuthResultsHandler);
     /// <summary>
     /// Registers endpoint from assemblies that contain specified types
     /// </summary>
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="endpointAssemblyMarkerTypes">Marker type used to scan assembly</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Type[] endpointAssemblyMarkerTypes)
-        => services.AddMinimalEndpoints(endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler = false, params Type[] endpointAssemblyMarkerTypes)
+        => services.AddMinimalEndpoints(registerAuthResultsHandler, endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Assembly[] assemblies)
+        => services.AddMinimalEndpoints(false, assemblies.Select(a => a));
 
     /// <summary>
     /// Registers endpoints from the specified assemblies
@@ -27,8 +37,8 @@ public static class ServiceCollectionExtensions
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Assembly[] assemblies)
-        => services.AddMinimalEndpoints(assemblies.Select(a => a));
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler = false, params Assembly[] assemblies)
+        => services.AddMinimalEndpoints(registerAuthResultsHandler, assemblies.Select(a => a));
 
     /// <summary>
     /// Registers commands from the specified assemblies
@@ -36,7 +46,7 @@ public static class ServiceCollectionExtensions
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, IEnumerable<Assembly> assemblies)
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool? registerAuthResultsHandler, IEnumerable<Assembly> assemblies)
     {
         if (assemblies == null || !assemblies.Any())
         {
@@ -63,6 +73,20 @@ public static class ServiceCollectionExtensions
             }
         }
 
+        RegisterMinimalEndpointServices(services, registerAuthResultsHandler ?? false);
+
         return services;
+    }
+
+    private static void RegisterMinimalEndpointServices(IServiceCollection services, bool registerAuthResultsHandler)
+    {
+        if (registerAuthResultsHandler)
+            services.AddSingleton<IAuthorizationMiddlewareResultHandler, EndpointAuthorizationMiddlewareResultHandler>();
+
+        services.AddTransient<IResponseNegotiator, JsonResponseNegotiator>();
+        services.AddTransient<IResponseNegotiator, XmlResponseNegotiator>();
+
+        services.AddTransient<IEndpointModelBinder, JsonEndpointModelBiner>();
+        services.AddTransient<IEndpointModelBinder, XmlEndpointModelBinder>();
     }
 }

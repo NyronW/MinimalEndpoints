@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MinimalEndpoints.Extensions.Http;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
 
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Customer>))]
-[ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized, "application/json", "application/xml")]
 [Endpoint(TagName = "Customer", OperationId = nameof(GetAllCustomers))]
 public class GetAllCustomers : EndpointBase, IEndpoint
 {
@@ -29,7 +30,7 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     {
         var customers = _customerRepository.GetAll();
 
-        return Ok(customers);
+        return Results.Extensions.Ok(customers);
     }
 }
 

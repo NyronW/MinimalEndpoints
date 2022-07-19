@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using MinimalEndpoints.Authorization;
 using MinimalEndpoints.WebApiDemo.Services;
 
 namespace MinimalEndpoints.WebApiDemo.Authorization;
@@ -23,7 +24,7 @@ public class MaxTodoItemsRequirementHandler : AuthorizationHandler<MaxTodoCountR
         if (requirement.MaxItems <= items.Count())
         {
             var instance = _httpContext?.HttpContext?.Request.Path.Value;
-            var reason = new DefaultAuthorizationFailureReason(this, 
+            var reason = new EndpointAuthorizationFailureReason(this, 
                 "Maximum number of todo items reached. Please remove some items and try again", 
                 instance, "https://httpstatuses.com/403",
                 "Cannot add new item", 403);

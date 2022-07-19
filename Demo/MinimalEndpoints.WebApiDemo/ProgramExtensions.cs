@@ -17,7 +17,7 @@ public static class ProgramExtensions
     {
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
-        builder.Services.AddMinimalEndpoints(typeof(ITodoRepository).Assembly, typeof(ICustomerRepository).Assembly);
+        builder.Services.AddMinimalEndpoints(true, typeof(ITodoRepository).Assembly, typeof(ICustomerRepository).Assembly);
 
         builder.Services.AddCustomerServices(); //Add services for support class library
 
@@ -68,6 +68,7 @@ public static class ProgramExtensions
                 }
             });
 
+            c.OperationFilter<SecureSwaggerEndpointhRequirementFilter>();
 
             // Set the comments path for the Swagger JSON and UI.
             var xmlFiles = Directory.GetFiles(AppContext.BaseDirectory)
@@ -86,20 +87,6 @@ public static class ProgramExtensions
                 Type = SecuritySchemeType.Http,
                 BearerFormat = "JWT",
                 Scheme = "Bearer"
-            });
-            c.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
-                {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference
-                        {
-                            Type=ReferenceType.SecurityScheme,
-                            Id="Bearer"
-                        }
-                    },
-                    new string[]{}
-                }
             });
         });
 
@@ -125,8 +112,6 @@ public static class ProgramExtensions
         });
 
         builder.Services.AddTransient<IAuthorizationHandler, MaxTodoItemsRequirementHandler>();
-
-        builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, DefaultAuthorizationMiddlewareResultHandler>();
 
         builder.Services.AddAuthorization(options =>
         {
