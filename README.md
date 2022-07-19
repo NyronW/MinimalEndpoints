@@ -225,8 +225,10 @@ Your endpoints will be visible via Swagger with no extra effort, however you can
 
 * TagName: This property affects how your endpoints are grouped on the Swagger UI page.
 * OperationId: This propery is used to identitfy each endpoint. This is also used when creating calling Results.CreateAtRoute(string routeName, object routeValue).
+* GroupName: This property is used to assign an endpoint to a specific Swagger document when multiple Open API soecifications are configured
 * ExcludeFromDescription: Set this property to true if you want don't want to list your endpoint on the Swagger UI page
 * RoutePrefixOverride: This property is used to override the default route prefix, if it was configured at startup.
+* Filters: Use this property to add filters to all endpoints. Only the ProducesResponseType attribute is currently supported for global filters
 
 You can improve your endpoint documentation by using comments to enrich the Swagger UI. You can follow the instructions from [this](https://code-maze.com/swagger-ui-asp-net-core-web-api/) blog to implement cooment support. 
 
