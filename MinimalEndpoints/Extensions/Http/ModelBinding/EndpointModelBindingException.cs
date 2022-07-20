@@ -4,9 +4,9 @@ namespace MinimalEndpoints.Extensions.Http.ModelBinding;
 
 public class EndpointModelBindingException : Exception, IHaveValidationProblemDetails
 {
-    public EndpointModelBindingException(string errorMessage,
+    public EndpointModelBindingException(string errorMessage, Exception? exception = null,
         IDictionary<string, string[]>? errors = null,
-        string? instance = null) : base(errorMessage)
+        string? instance = null) : base(errorMessage, exception)
     {
         Detail = errorMessage;
         Errors = errors ?? new Dictionary<string, string[]>();

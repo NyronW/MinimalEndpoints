@@ -47,7 +47,7 @@ public static class HttpExtensions
 
             throw new EndpointModelBindingException(
               $"An error occurred while deserializing input data.",
-              instance: request.Path.Value);
+              instance: request.Path.Value, exception: e);
         }
     }
 
