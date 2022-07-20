@@ -12,8 +12,13 @@
     <RepositoryUrl>https://github.com/NyronW/MinimalEndpoints</RepositoryUrl>
     <PackageTags>ASP.NET; Minimal API; Endpoint; REPR; C#; .NET</PackageTags>
     <Version>1.0.4</Version>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
+  
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
