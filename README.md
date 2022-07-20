@@ -144,7 +144,7 @@ builder.Services.AddWebMinimalEndpoints();
 
 //...
 
-//Adding JWT Token support
+//Adding JWT Token support (this is just for demo use)
 builder.Services.AddAuthentication(options =>
 {
 	options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -218,7 +218,73 @@ public class DeleteTodoItem : EndpointBase, IEndpoint
 }
 
 ```
+MinimalEndpoint can return a more detailed and user friendly response whenever there's an authorization failure. To enable this feature call the UseAuthorizationResultHandler method on the EndpointConfiguration class when adding MinimalEndpoint to the request pipeline. The next step is to pass an instance of the [EndpointAuthorizationFailureReason](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Authorization/EndpointAuthorizationFailureReason.cs) class to the AuthorizationHandlerContext.Fail() method call in your AuthorizationHandler<TRequirement> classes. You can also use the ClaimsRequirement class when configuring authorization to return custom messages to the client.
+	
+```csharp
 
+//start up configuration
+app.UseMinimalEndpoints(o =>
+{
+    o.DefaultRoutePrefix = "/api/v1";
+    o.DefaultGroupName = "v1";
+    o.Filters.Add(new ProducesResponseTypeAttribute(StatusCodes.Status400BadRequest));
+    o.UseAuthorizationResultHandler();
+});
+
+//Authorization handler
+
+public class MaxTodoItemsRequirementHandler : AuthorizationHandler<MaxTodoCountRequirement>
+{
+    private readonly ITodoRepository _repository;
+    private readonly IHttpContextAccessor _httpContext;
+
+    public MaxTodoItemsRequirementHandler(ITodoRepository repository, IHttpContextAccessor httpContext)
+    {
+        _repository = repository;
+        _httpContext = httpContext;
+    }
+
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, MaxTodoCountRequirement requirement)
+    {
+        if (requirement == null) return;
+
+        var items = await _repository.GetAllAsync();
+
+        if (requirement.MaxItems <= items.Count())
+        {
+            var instance = _httpContext?.HttpContext?.Request.Path.Value;
+            var reason = new EndpointAuthorizationFailureReason(this, 
+                "Maximum number of todo items reached. Please remove some items and try again", 
+                instance, "https://httpstatuses.com/403",
+                "Cannot add new item", 403);
+
+            context.Fail(reason);
+            return;
+        }
+
+        context.Succeed(requirement);
+    }
+}	
+	
+//Using custom ClaimRequirement
+						 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("todo:read-write", policyBuilder =>
+    {
+	policyBuilder.RequireClaim("todo:read-write", "true"); // default claims configuration
+    });
+
+    options.AddPolicy("todo:max-count", policyBuilder =>
+    {
+	policyBuilder.AddRequirements(new ClaimsRequirement("todo:read-write2",
+	    "You do not have permission to create, update or delete todo items",
+	    allowedValues: new[] { "true" })); //custom claim configuration
+	policyBuilder.AddRequirements(new MaxTodoCountRequirement(1));
+    });
+});						 
+	
+```
 ### How to support OpenAPI/Swagger with MinimalEndpoints?
 
 Your endpoints will be visible via Swagger with no extra effort, however you can used the [EndpointAttribute](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/EndpointAttribute.cs) class to customize how your endpoints are exposed via Swagger.
@@ -342,5 +408,82 @@ public class CreateTodoItemV2 : Endpoint<string, IResult>
         return Results.Created($"/endpoints/todos/{id}", new TodoItem(id, description, false));
     }
 }
+
+```
+
+
+### Model Binding & Content Negotiation
+
+ASP.NET Minimal API comes with support for consuming json. If you want to support other content types, such as xml, you need custom binding logic on your models. For detailed instructions on how to implement this method see [this](https://khalidabuhakmeh.com/using-aspnet-core-mvc-value-providers-with-minimal-apis) blog. MinimalEndpoints offers a similar solution that integrates well with it's other features. You can implement the [IEndpointModelBinder](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Extensions/Http/ModelBinding/IEndpointModelBinder.cs) interface and register the class in the DI container. 
+
+To use your new model binding capabilities you can simply inherit your endpoints fromt the [EnpointBase<TRequest,TResponse>](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/EndpointBaseT.cs) class or use the GetModelAsync extension method on the HttpRequest object. MinimalEndpoints supports both json and xml model binding and will throw an [EndpointModelBindingException](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Extensions/Http/ModelBinding/EndpointModelBindingException.cs) exception when an error occurs during model binding. If you inherit from the EndpointBase<TRequest,TResponse> class the exception will only be sent to the caller when the environment is set to development, otherwise its wraped in the [problem details](https://datatracker.ietf.org/doc/html/rfc7807) response.
+
+```csharp
+//Implement model binding contract
+public class XmlEndpointModelBinder : IEndpointModelBinder
+{
+    public bool CanHandle(string? contentType)
+        => contentType?.IndexOf("xml", StringComparison.OrdinalIgnoreCase) != -1;
+
+    public async ValueTask<TModel?> BindAsync<TModel>(HttpRequest request, CancellationToken cancellationToken)
+    {
+        TModel? model = default;
+
+        if (request.HasXmlContentType())
+            model = await request.ReadFromXmlAsync<TModel>(cancellationToken);
+
+        return model;
+    }
+}
+
+//Inheriting from EndpointBase<TRequest,TResponse>
+
+//Use the accept attribute to tell clients what content types are allowed. This example accepts json and xml
+[Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = new[] { "application/xml" })]
+[Endpoint(TagName = "Customer", OperationId = nameof(CreateCustomer))]
+public class CreateCustomer : EndpointBase<CustomerDto, Customer>
+{
+	private readonly ICustomerRepository _repository;
+
+	public CreateCustomer(ILoggerFactory loggerFactory, ICustomerRepository repository) : base(loggerFactory)
+	{
+	    _repository = repository;
+	}
+
+	public override string Pattern => "/customers";
+
+	public override HttpMethod Method => HttpMethod.Post;
+
+	public override async Task<IResult> HandleRequestAsync(CustomerDto customerDto, HttpRequest httpRequest, CancellationToken cancellationToken = default)
+	{
+	    try
+	    {
+		var customer = await _repository.CreateAsync(customerDto);
+
+		return CreatedAtRoute(nameof(GetCustomerById), new { id = customer.Id }, customer);
+	    }
+	    catch
+	    {
+		//custom error handling or throw for base class to handle
+		throw;
+	    }
+  	}
+}
+
+//Using extenion method to bind models
+
+CustomerDto? model = await httpRequest.GetModelAsync<CustomerDto>(cancellationToken);
+
+
+```
+
+Content negotiation can be extended by implementing the [IResponseNegotiator](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Extensions/Http/ContentNegotiation/IResponseNegotiator.cs) interface. Once you've regitered your class, you can utalize the new feature by inheriting from the EndpointBase<TRequest,TResponse> class or using the SendAsync extension method on the HttpResponse object. MinimalEndpoint adds xml support to the existing content types already supported by ASP.NET Minimal API.
+
+```csharp
+
+//Calling SendAsync method will automatically negotiate the contenttype to send to client
+
+response.Headers.Location = uri;
+await response.SendAsync(model, StatusCodes.Status201Created)
 
 ```
