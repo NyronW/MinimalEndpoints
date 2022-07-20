@@ -15,7 +15,9 @@ public class JsonEndpointModelBiner : IEndpointModelBinder
         if (request.HasJsonContentType())
             model = await request.ReadFromJsonAsync<TModel>(cancellationToken);
         else
-            throw new InvalidOperationException($"Unable to read the request as JSON because the request content type '{request.ContentType}' is not a known JSON content type.");
+            throw new EndpointModelBindingException(
+                $"Unable to read the request as JSON because the request content type '{request.ContentType}' is not a known JSON content type.",
+                instance: request.Path.Value);
 
         return model;
     }

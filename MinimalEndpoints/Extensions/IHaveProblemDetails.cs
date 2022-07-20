@@ -8,3 +8,8 @@ public interface IHaveProblemDetails
     string Instance { get; }
     int Status { get; }
 }
+
+public interface IHaveValidationProblemDetails: IHaveProblemDetails
+{
+    IDictionary<string, string[]> Errors { get; }
+}

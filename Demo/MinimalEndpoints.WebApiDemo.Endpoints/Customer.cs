@@ -27,3 +27,15 @@ public class Customer
     [Required]
     public string Name { get; set; }
 }
+
+/// <summary>
+/// Customer Dto
+/// </summary>
+public class CustomerDto
+{
+    [Required]
+    public string FirstName { get; set; }
+
+    [Required]
+    public string LastName { get; set; }
+}

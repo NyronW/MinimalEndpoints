@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using MinimalEndpoints.Extensions.Http.ContentNegotiation;
@@ -14,18 +16,39 @@ public static class HttpExtensions
 {
     public static async ValueTask<TModel?> GetModelAsync<TModel>(this HttpRequest request, CancellationToken cancellationToken = default)
     {
-        var binders = request.HttpContext.RequestServices.GetServices<IEndpointModelBinder>().ToList();
-
-        IEndpointModelBinder? binder = binders.FirstOrDefault(x => x.CanHandle(request.ContentType));
-
-        if (binder == null)
+        try
         {
-            throw new InvalidOperationException($"Unable to read the request because the request content type '{request.ContentType}' is not a supported content type.");
+            var binders = request.HttpContext.RequestServices.GetServices<IEndpointModelBinder>().ToList();
+
+            IEndpointModelBinder? binder = binders.FirstOrDefault(x => x.CanHandle(request.ContentType));
+
+            if (binder == null)
+            {
+                throw new EndpointModelBindingException(
+                    $"Unable to read the request because the request content type '{request.ContentType}' is not a supported content type.",
+                    instance: request.Path.Value);
+            }
+
+            TModel? model = await binder.BindAsync<TModel>(request, cancellationToken);
+
+            return model;
         }
+        catch (Exception e)
+        {
+            var logger = request.HttpContext.RequestServices.GetService<ILogger>();
 
-        TModel? model = await binder.BindAsync<TModel>(request, cancellationToken);
+            logger?.LogError("Unhandled error occured while trying to bind incoming data", e);
 
-        return model;
+            var env = request.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
+           
+            //throw exception if where are in dev environment or its a bindign error
+            if (env.IsDevelopment() || e is EndpointModelBindingException) throw;
+
+
+            throw new EndpointModelBindingException(
+              $"An error occurred while deserializing input data.",
+              instance: request.Path.Value);
+        }
     }
 
     public static async ValueTask<TValue?> ReadFromXmlAsync<TValue>(this HttpRequest request, CancellationToken cancellationToken = default)
@@ -126,7 +149,9 @@ public static class HttpExtensions
 
     private static void ThrowContentTypeError(HttpRequest request)
     {
-        throw new InvalidOperationException($"Unable to read the request as XML because the request content type '{request.ContentType}' is not a known XML content type.");
+        throw new EndpointModelBindingException(
+            $"Unable to read the request as XML because the request content type '{request.ContentType}' is not a known XML content type.",
+            instance: request.Path.Value);
     }
 
     private static (Stream inputStream, bool usesTranscodingStream) GetInputStream(HttpContext httpContext, Encoding? encoding)

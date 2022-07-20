@@ -4,6 +4,7 @@ public interface ICustomerRepository
 {
     IEnumerable<Customer> GetAll();
     Customer GetById(int id);
+    Task<Customer> CreateAsync(CustomerDto customer);
 }
 
 public class CustomerRepository : ICustomerRepository
@@ -17,6 +18,15 @@ public class CustomerRepository : ICustomerRepository
                 new Customer(5, "Cassandre Lee")
             };
 
+    public Task<Customer> CreateAsync(CustomerDto customer)
+    {
+        var id = _customerList.Count + 1;
+        var newCustomer = new Customer { Id = id, Name = $"{customer.FirstName} {customer.LastName}" };
+
+        _customerList.Add(newCustomer);
+
+        return Task.FromResult(newCustomer);
+    }
 
     public IEnumerable<Customer> GetAll()
     {
@@ -27,4 +37,5 @@ public class CustomerRepository : ICustomerRepository
     {
         return _customerList.SingleOrDefault(c => c.Id == id);
     }
+
 }
