@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinimalEndpoints" Version="1.0.5" />
+<!--#if (AddSwagger) -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.1" />
+<!--#endif -->
+  </ItemGroup>
+
+</Project>

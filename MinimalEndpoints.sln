@@ -19,7 +19,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MvcControllers", "Benchmark
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpointsBench", "Benchmark\MinimalEndpoints\MinimalEndpointsBench.csproj", "{53A2D61A-EA1E-415F-8EEB-52388DBFC32F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastEndpointsBench", "Benchmark\FastEndpoints\FastEndpoints\FastEndpointsBench.csproj", "{FD96EFA2-6116-4CB9-882F-C06184BF41D1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastEndpointsBench", "Benchmark\FastEndpoints\FastEndpoints\FastEndpointsBench.csproj", "{FD96EFA2-6116-4CB9-882F-C06184BF41D1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +55,10 @@ Global
 		{FD96EFA2-6116-4CB9-882F-C06184BF41D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FD96EFA2-6116-4CB9-882F-C06184BF41D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FD96EFA2-6116-4CB9-882F-C06184BF41D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{92DE7AB2-3485-4A19-981B-8F4F698FFC54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{92DE7AB2-3485-4A19-981B-8F4F698FFC54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{92DE7AB2-3485-4A19-981B-8F4F698FFC54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{92DE7AB2-3485-4A19-981B-8F4F698FFC54}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -66,6 +70,7 @@ Global
 		{BCE75FC2-F272-4EA2-A5F8-EC02D86995B1} = {DEF24E41-0B32-41A1-83B4-9C048B101EEF}
 		{53A2D61A-EA1E-415F-8EEB-52388DBFC32F} = {DEF24E41-0B32-41A1-83B4-9C048B101EEF}
 		{FD96EFA2-6116-4CB9-882F-C06184BF41D1} = {DEF24E41-0B32-41A1-83B4-9C048B101EEF}
+		{92DE7AB2-3485-4A19-981B-8F4F698FFC54} = {811BA347-93DD-4E5F-870A-8416CBACFBEB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3F600965-3A8B-4072-8BB9-9F46FA815C94}

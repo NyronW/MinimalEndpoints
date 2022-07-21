@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <PackageType>Template</PackageType>
+        <PackageVersion>1.0.5</PackageVersion>
+        <PackageId>minimalendpoints</PackageId>
+        <Description>A dotnet-new template for creating web api projects using MinimalEndpoints</Description>
+        <Authors>Nyron Williams</Authors>
+        <PackageTags>asp.net core;web api;.net core;routing;minimalendpoints;minimalendpoints template;</PackageTags>
+        <PackageProjectUrl>https://github.com/NyronW/MinimalEndpoints</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <LangVersion>latest</LangVersion>
+        <IncludeContentInPack>true</IncludeContentInPack>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <ContentTargetFolders>content</ContentTargetFolders>
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**"/>
+        <Compile Remove="**\*"/>
+    </ItemGroup>
+
+
+</Project>
