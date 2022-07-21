@@ -1,13 +1,19 @@
 {
     "$schema": "http://json.schemastore.org/vs-2017.3.host",
-    "icon": "auth0.png",
     "symbolInfo": [
       {
         "id": "AddSwagger",
         "name": {
           "text": "Add Swagger"
         },
-        "isVisible": "true"
+        "isVisible": true
+      },
+      {
+        "id": "RequiresHttps",
+        "name": {
+          "text": "Enable Https"
+        },
+        "isVisible": true
       }
     ]
   }

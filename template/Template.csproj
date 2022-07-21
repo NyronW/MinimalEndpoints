@@ -2,8 +2,8 @@
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
         <PackageType>Template</PackageType>
-        <PackageVersion>1.0.5</PackageVersion>
-        <PackageId>minimalendpoints</PackageId>
+        <PackageVersion>1.0.0</PackageVersion>
+        <PackageId>minimalendpointsTemplate</PackageId>
         <Description>A dotnet-new template for creating web api projects using MinimalEndpoints</Description>
         <Authors>Nyron Williams</Authors>
         <PackageTags>asp.net core;web api;.net core;routing;minimalendpoints;minimalendpoints template;</PackageTags>
@@ -20,6 +20,4 @@
         <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**"/>
         <Compile Remove="**\*"/>
     </ItemGroup>
-
-
 </Project>

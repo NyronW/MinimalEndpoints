@@ -1,7 +1,7 @@
 {
     "$schema": "http://json.schemastore.org/template",
     "author": "Nyron Williams",
-    "classifications": [ "MinimalEndpoints", "Minimal API", "Web API" ],
+    "classifications": [ "Web" ],
     "identity": "minimalendpoints",
     "name": "MinimalEndpoints Web API",
     "description": "A light weight abstraction over ASP.NET Minimal API",
@@ -18,7 +18,29 @@
             "description": "Adds Swagger to project",
             "datatype":"bool",
             "defaultValue": "true"
-        }
+        },
+        "RequiresHttps":{
+            "type": "parameter",
+            "description": "Add https support",
+            "datatype":"bool",
+            "defaultValue": "true"
+        },
+        "PortNumber": {    
+            "type": "generated",    
+            "generator": "port",
+            "parameters": {
+              "fallback": 5000
+            },
+            "replaces": "{portno}"  
+          },
+          "SslPortNumber": {    
+              "type": "generated",    
+              "generator": "port",
+              "parameters": {
+                "fallback": 44300
+              },
+              "replaces": "{sslportno}"  
+            }
     },
     "sources": [
         {
