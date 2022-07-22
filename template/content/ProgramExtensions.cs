@@ -32,7 +32,7 @@ public static class ProgramExtensions
                 },
                 License = new OpenApiLicense
                 {
-                    Name = "{MinimalEndpoints.Template} License",
+                    Name = "MinimalEndpoints.Template License",
                     Url = new Uri("https://example.com/license"),
                 }
             });

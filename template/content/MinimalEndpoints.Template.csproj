@@ -4,7 +4,16 @@
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!--#if (AddSwagger) -->
+   <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <!--#endif -->
   </PropertyGroup>
+
+  <!--#if (AddSwagger) -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;1591</NoWarn>
+  </PropertyGroup>
+  <!--#endif -->
 
   <ItemGroup>
     <PackageReference Include="MinimalEndpoints" Version="1.0.5" />

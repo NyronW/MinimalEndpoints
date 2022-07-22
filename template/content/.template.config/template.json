@@ -1,10 +1,10 @@
 {
     "$schema": "http://json.schemastore.org/template",
     "author": "Nyron Williams",
-    "classifications": [ "Web" ],
+    "classifications": [ "Linux","macOS","Windows","Cloud","Service","Web" ],
     "identity": "minimalendpoints",
     "name": "MinimalEndpoints Web API",
-    "description": "A light weight abstraction over ASP.NET Minimal API",
+    "description": "A project template for creating an ASP.NET Core web api application using the MinimalEndpoints library",
     "shortName": "minimalendpoints",
     "sourceName": "MinimalEndpoints.Template",
     "preferNameDirectory":true,
