@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace MinimalEndpoints;
+﻿namespace MinimalEndpoints;
 
 public interface IEndpoint
 {

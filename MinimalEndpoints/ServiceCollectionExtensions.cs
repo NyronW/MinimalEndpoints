@@ -61,7 +61,8 @@ public static class ServiceCollectionExtensions
                 {
                     if (!interfaceTypes.Any(t => t == @interface)) continue;
 
-                    services.AddTransient(@interface, type);
+                    services.AddScoped(type);
+                    services.AddScoped(@interface, type);
                 }
             }
         }

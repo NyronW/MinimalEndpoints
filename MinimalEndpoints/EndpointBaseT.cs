@@ -29,7 +29,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
     protected virtual async Task<IResult> HandlerCore(HttpRequest httpRequest, CancellationToken cancellationToken = default)
     {
         var correlationId = httpRequest.Headers["X-CorrelationId"].FirstOrDefault() ?? Guid.NewGuid().ToString();
-        httpRequest.HttpContext.Response.Headers.Add("X-CorrelationId", correlationId);
+        httpRequest.HttpContext.Response.Headers["X-CorrelationId"] = correlationId;
 
         using (_logger.AddContext("CorrelationId", correlationId))
         using (_logger.AddContext("RequestUri", httpRequest.Path.Value))
@@ -64,7 +64,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
             }
             catch (EndpointModelBindingException ex)
             {
-                _logger.LogError($"Unhandled exception occured while attempting to bind data", ex);
+                _logger.LogError(ex,$"Unhandled exception occured while attempting to bind data");
 
                 var exceptionDetails = (IHaveValidationProblemDetails)ex;
 

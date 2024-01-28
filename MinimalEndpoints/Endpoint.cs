@@ -1,6 +1,6 @@
 ﻿namespace MinimalEndpoints;
 
-public abstract class Endpoint<TResponse> : IEndpoint
+public abstract class Endpoint<TResponse> : EndpointBase, IEndpoint
 {
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }
@@ -8,13 +8,13 @@ public abstract class Endpoint<TResponse> : IEndpoint
 
     public Delegate Handler => HandlerCore;
 
-    private async Task<TResponse> HandlerCore()
+    protected virtual async Task<TResponse> HandlerCore()
     {
         return await SendAsync();
     }
 }
 
-public abstract class Endpoint<TRequest, TResponse> : IEndpoint
+public abstract class Endpoint<TRequest, TResponse> : EndpointBase, IEndpoint
 {
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }

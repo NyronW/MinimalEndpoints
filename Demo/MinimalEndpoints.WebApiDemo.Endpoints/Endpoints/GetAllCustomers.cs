@@ -10,25 +10,29 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 public class GetAllCustomers : EndpointBase, IEndpoint
 {
     private readonly ICustomerRepository _customerRepository;
+    private readonly ISomeService _someService;
 
-    public GetAllCustomers(ICustomerRepository customerRepository)
+    public GetAllCustomers(ICustomerRepository customerRepository, ISomeService someService)
     {
         _customerRepository = customerRepository;
+        _someService = someService;
     }
 
     public string Pattern => "/customers";
 
     public HttpMethod Method => HttpMethod.Get;
 
-    public Delegate Handler => GetCustomers;
-
     /// <summary>
     /// Get all available customers
     /// </summary>
     /// <returns></returns>
-    private IResult GetCustomers()
+    public Delegate Handler => GetCustomers;
+
+    private IResult GetCustomers([FromQuery] int pageNo, [FromQuery] int pageSize = 10)
     {
         var customers = _customerRepository.GetAll();
+
+        _someService.Foo();
 
         return Results.Extensions.Ok(customers);
     }

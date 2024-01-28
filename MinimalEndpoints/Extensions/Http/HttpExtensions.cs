@@ -7,7 +7,10 @@ using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using MinimalEndpoints.Extensions.Http.ContentNegotiation;
 using MinimalEndpoints.Extensions.Http.ModelBinding;
+using Newtonsoft.Json.Linq;
 using System.Text;
+using System.Threading;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace MinimalEndpoints.Extensions.Http;
@@ -37,12 +40,12 @@ public static class HttpExtensions
         {
             var logger = request.HttpContext.RequestServices.GetService<ILogger>();
 
-            logger?.LogError("Unhandled error occured while trying to bind incoming data", e);
+            logger?.LogError(e, "Unhandled error occured while trying to bind incoming data");
 
             var env = request.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
            
-            //throw exception if where are in dev environment or its a bindign error
-            if (env.IsDevelopment() || e is EndpointModelBindingException) throw;
+            //throw exception if whe are in dev environment or its a binding error
+            if (env!.IsDevelopment() || e is EndpointModelBindingException) throw;
 
 
             throw new EndpointModelBindingException(
@@ -53,8 +56,9 @@ public static class HttpExtensions
 
     public static async ValueTask<TValue?> ReadFromXmlAsync<TValue>(this HttpRequest request, CancellationToken cancellationToken = default)
     {
-        if (request == null) throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
 
+        if (request.Body == null) throw new ArgumentNullException(nameof(request.Body), "Request body is null");
         if (!request.HasXmlContentType(out var charset)) ThrowContentTypeError(request);
 
         var encoding = GetEncodingFromCharset(charset);
@@ -62,7 +66,7 @@ public static class HttpExtensions
 
         try
         {
-            var body = await new StreamReader(inputStream).ReadToEndAsync();
+            var body = await new StreamReader(inputStream).ReadToEndAsync(cancellationToken);
 
             if (inputStream.CanSeek)
             {
@@ -73,6 +77,37 @@ public static class HttpExtensions
             {
                 var serializer = new XmlSerializer(typeof(TValue));
                 return (TValue?)serializer.Deserialize(sw);
+            }
+        }
+        finally
+        {
+            if (usesTranscodingStream) await inputStream.DisposeAsync();
+        }
+    }
+
+    public static async Task<object> ReadFromXmlAsync(this HttpRequest request, Type type, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.Body == null) throw new ArgumentNullException(nameof(request.Body), "Request body is null");
+        if (!request.HasXmlContentType(out var charset)) ThrowContentTypeError(request);
+
+        var encoding = GetEncodingFromCharset(charset);
+        var (inputStream, usesTranscodingStream) = GetInputStream(request.HttpContext, encoding);
+
+        try
+        {
+            var body = await new StreamReader(inputStream).ReadToEndAsync(cancellationToken);
+
+            if (inputStream.CanSeek)
+            {
+                inputStream.Position = 0;
+            }
+
+            using (var sw = new StringReader(body))
+            {
+                var serializer = new XmlSerializer(type);
+                return serializer.Deserialize(sw)!;
             }
         }
         finally

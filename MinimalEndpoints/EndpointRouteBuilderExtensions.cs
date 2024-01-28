@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using MinimalEndpoints.Extensions.Http;
 using System.Reflection;
+using System.Text.Json;
+using System.Xml.Serialization;
 
 namespace MinimalEndpoints;
 
@@ -27,9 +30,10 @@ public static class EndpointRouteBuilderExtensions
     /// <returns>EndpointRouteBuilder</returns>
     public static IEndpointRouteBuilder UseMinimalEndpoints(this IEndpointRouteBuilder builder, Action<EndpointConfiguration>? configuration)
     {
-        var app = builder.CreateApplicationBuilder();
+        using var scope = builder.ServiceProvider.CreateScope();
+        var services = scope.ServiceProvider;
 
-        var endpoints = app.ApplicationServices.GetServices<IEndpoint>();
+        var endpoints = services.GetServices<IEndpoint>();
         if (endpoints == null) return builder;
 
         var serviceConfig = new EndpointConfiguration();
@@ -49,7 +53,99 @@ public static class EndpointRouteBuilderExtensions
                 pattern = $"{tagAttr.RoutePrefixOverride.TrimEnd('/')}/{endpoint.Pattern.TrimStart('/')}";
             }
 
-            var mapping = builder.MapMethods(pattern, new[] { endpoint.Method.Method }, endpoint.Handler);
+            var handler = async (IServiceProvider sp, HttpRequest request) =>
+            {
+                object result = null!;
+
+                try
+                {
+                    var ep = (IEndpoint)sp.GetService(endpoint.GetType())!;
+
+                    MethodInfo methodInfo = ep.Handler.Method;
+                    ParameterInfo[] parameters = methodInfo.GetParameters();
+
+                    object[] args = new object[parameters.Length];
+
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        var param = parameters[i];
+                        if (param is not { Name.Length: > 0 }) continue;
+
+                        object value = null!;
+                        object requestBodyObject = null!;
+
+                        string stringValue = request.RouteValues[param.Name]?.ToString()! ??
+                                             request.Query[param.Name].FirstOrDefault()! ??
+                                             request.Headers[param.Name].FirstOrDefault()!;
+
+                        if (param.ParameterType == typeof(HttpContext))
+                        {
+                            value = request.HttpContext;
+                        }
+                        else if (param.ParameterType == typeof(HttpRequest))
+                        {
+                            value = request;
+                        }
+                        else if (!string.IsNullOrEmpty(stringValue))
+                        {
+                            value = ConvertParameter(stringValue, param.ParameterType);
+                        }
+                        else if (param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
+                        {
+                            if (param.HasDefaultValue)
+                            {
+                                value = param.DefaultValue!;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
+                            }
+                        }
+
+                        if (value == null && (!param.ParameterType.IsValueType || Nullable.GetUnderlyingType(param.ParameterType) != null))
+                        {
+                            if (requestBodyObject == null && request.ContentLength > 0)
+                            {
+                                if (request.ContentType == "application/json")
+                                {
+                                    requestBodyObject = (await request.ReadFromJsonAsync(param.ParameterType))!;
+                                }
+                                else if (request.ContentType == "application/xml")
+                                {
+                                    requestBodyObject = (await request.ReadFromXmlAsync(param.ParameterType))!;
+                                }
+                            }
+                            value = requestBodyObject ?? (param.HasDefaultValue ? param.DefaultValue : null!)!;
+                        }
+
+                        args[i] = value!;
+                    }
+
+                    // Invoke the delegate with the dynamically bound parameters
+                    bool isAsync = typeof(Task).IsAssignableFrom(methodInfo.ReturnType);
+                    bool isGenericTask = methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.GetGenericTypeDefinition() == typeof(Task<>);
+
+                    if (isAsync)
+                    {
+                        var task = (Task)methodInfo.Invoke(ep.Handler.Target, args)!;
+                        await task.ConfigureAwait(false);
+                        result = isGenericTask ? ((dynamic)task).Result : null!;
+                    }
+                    else
+                    {
+                        // Invoke the delegate synchronously
+                        result = methodInfo.Invoke(ep.Handler.Target, args)!;
+                    }
+                }
+                catch
+                {
+                    throw;
+                }
+
+                return result;
+            };
+
+            var mapping = builder.MapMethods(pattern, new[] { endpoint.Method.Method }, handler);
 
             var globalProduces = serviceConfig.Filters.Where(f => f is ProducesResponseTypeAttribute)
                 .Cast<ProducesResponseTypeAttribute>();
@@ -92,7 +188,7 @@ public static class EndpointRouteBuilderExtensions
             }
 
             var corsAttributes = (EnableCorsAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EnableCorsAttribute));
-            foreach (var corsAttr in corsAttributes) mapping.RequireCors(corsAttr.PolicyName);
+            foreach (var corsAttr in corsAttributes) mapping.RequireCors(corsAttr.PolicyName!);
 
             var acceptedAttributes = (AcceptAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AcceptAttribute));
             foreach (var acceptAttr in acceptedAttributes)
@@ -118,5 +214,12 @@ public static class EndpointRouteBuilderExtensions
         }
 
         return builder;
+    }
+
+    private static object ConvertParameter(string value, Type type)
+    {
+        return string.IsNullOrEmpty(value)! ?
+               (type.IsValueType ? Activator.CreateInstance(type) : null!)! :
+               Convert.ChangeType(value, type)!;
     }
 }
