@@ -6,7 +6,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Customer>))]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized, "application/json", "application/xml")]
-[Endpoint(TagName = "Customer", OperationId = nameof(GetAllCustomers))]
+[Endpoint(TagName = "Customer", Description = "Description from attributes", OperationId = nameof(GetAllCustomers))]
 public class GetAllCustomers : EndpointBase, IEndpoint
 {
     private readonly ICustomerRepository _customerRepository;

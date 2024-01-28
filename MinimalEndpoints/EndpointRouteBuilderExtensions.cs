@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions.Http;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
+using System.Threading;
 using System.Xml.Serialization;
 
 namespace MinimalEndpoints;
@@ -53,7 +56,8 @@ public static class EndpointRouteBuilderExtensions
                 pattern = $"{tagAttr.RoutePrefixOverride.TrimEnd('/')}/{endpoint.Pattern.TrimStart('/')}";
             }
 
-            var handler = async (IServiceProvider sp, HttpRequest request) =>
+            var methods = new[] { endpoint.Method.Method };
+            var handler = async ([FromServices] IServiceProvider sp, [FromServices] ILogger logger, HttpRequest request, CancellationToken cancellationToken = default) =>
             {
                 object result = null!;
 
@@ -61,10 +65,8 @@ public static class EndpointRouteBuilderExtensions
                 {
                     var ep = (IEndpoint)sp.GetService(endpoint.GetType())!;
 
-                    MethodInfo methodInfo = ep.Handler.Method;
-                    ParameterInfo[] parameters = methodInfo.GetParameters();
-
-                    object[] args = new object[parameters.Length];
+                    var (methodInfo, parameters) = GetMethodDetails(ep.Handler.Method, logger);
+                    var args = new object[parameters.Length];
 
                     for (int i = 0; i < parameters.Length; i++)
                     {
@@ -78,7 +80,16 @@ public static class EndpointRouteBuilderExtensions
                                              request.Query[param.Name].FirstOrDefault()! ??
                                              request.Headers[param.Name].FirstOrDefault()!;
 
-                        if (param.ParameterType == typeof(HttpContext))
+                        if (IsBindAsyncOverridden(ep.GetType()))
+                        {
+                            return await ep.BindAsync(request, cancellationToken);
+                        }
+                        else if (param.ParameterType == typeof(IFormFile) || param.ParameterType == typeof(IFormFileCollection))
+                        {
+                            var files = request.ReadFormFiles(param.Name);
+                            if (files is { }) value = files is { Count: 1 } ? files[0] : (IFormFileCollection)files;
+                        }
+                        else if (param.ParameterType == typeof(HttpContext))
                         {
                             value = request.HttpContext;
                         }
@@ -98,6 +109,7 @@ public static class EndpointRouteBuilderExtensions
                             }
                             else
                             {
+                                logger.LogDebug($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
                                 throw new InvalidOperationException($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
                             }
                         }
@@ -122,11 +134,10 @@ public static class EndpointRouteBuilderExtensions
                     }
 
                     // Invoke the delegate with the dynamically bound parameters
-                    bool isAsync = typeof(Task).IsAssignableFrom(methodInfo.ReturnType);
-                    bool isGenericTask = methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.GetGenericTypeDefinition() == typeof(Task<>);
-
-                    if (isAsync)
+                    if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
                     {
+                        bool isGenericTask = methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.GetGenericTypeDefinition() == typeof(Task<>);
+
                         var task = (Task)methodInfo.Invoke(ep.Handler.Target, args)!;
                         await task.ConfigureAwait(false);
                         result = isGenericTask ? ((dynamic)task).Result : null!;
@@ -137,15 +148,22 @@ public static class EndpointRouteBuilderExtensions
                         result = methodInfo.Invoke(ep.Handler.Target, args)!;
                     }
                 }
-                catch
+                catch (TargetInvocationException ex)
                 {
+                    logger.LogError(ex, "Error occurred during method invocation.");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error occurred processing the request.");
                     throw;
                 }
 
                 return result;
             };
 
-            var mapping = builder.MapMethods(pattern, new[] { endpoint.Method.Method }, handler);
+
+            var mapping = builder.MapMethods(pattern, methods, handler);
 
             var globalProduces = serviceConfig.Filters.Where(f => f is ProducesResponseTypeAttribute)
                 .Cast<ProducesResponseTypeAttribute>();
@@ -203,14 +221,18 @@ public static class EndpointRouteBuilderExtensions
 
             if (tagAttr.ExcludeFromDescription) mapping.ExcludeFromDescription();
 
-            if (!string.IsNullOrEmpty(tagAttr.TagName)) mapping.WithTags(tagAttr.TagName);
+            if (!string.IsNullOrWhiteSpace(tagAttr.TagName)) mapping.WithTags(tagAttr.TagName);
 
-            if (!string.IsNullOrEmpty(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
+            if (!string.IsNullOrWhiteSpace(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
 
-            if (!string.IsNullOrEmpty(tagAttr.GroupName))
+            if (!string.IsNullOrWhiteSpace(tagAttr.GroupName))
                 mapping.WithGroupName(tagAttr.GroupName);
             else if (serviceConfig.DefaultGroupName is { })
                 mapping.WithGroupName(serviceConfig.DefaultGroupName);
+
+            if (!string.IsNullOrWhiteSpace(tagAttr.Description)) mapping.WithDescription(tagAttr.Description);
+
+            if (!string.IsNullOrWhiteSpace(tagAttr.RateLimitingPolicyName)) mapping.RequireRateLimiting(tagAttr.RateLimitingPolicyName);
         }
 
         return builder;
@@ -222,4 +244,69 @@ public static class EndpointRouteBuilderExtensions
                (type.IsValueType ? Activator.CreateInstance(type) : null!)! :
                Convert.ChangeType(value, type)!;
     }
+
+    private static object ExtractFileParameter(HttpRequest request, ParameterInfo param)
+    {
+        if (request is { } && param is { Name.Length: > 0 })
+        {
+            if (param.ParameterType == typeof(IFormFile))
+            {
+                return request.Form.Files.GetFile(param.Name)!;
+            }
+            else if (param.ParameterType == typeof(IFormFileCollection))
+            {
+                return request.Form.Files.GetFiles(param.Name);
+            }
+        }
+        return null;
+    }
+
+    #region MethodDetailsCache
+    private static readonly ConcurrentDictionary<MethodInfo, MethodDetails> _methodCache = new ConcurrentDictionary<MethodInfo, MethodDetails>();
+
+    public static MethodDetails GetMethodDetails(MethodInfo methodInfo, ILogger logger)
+    {
+        if (methodInfo == null)
+        {
+            logger.LogError("MethodInfo is null in GetMethodDetails call.");
+            throw new ArgumentNullException(nameof(methodInfo), "MethodInfo cannot be null");
+        }
+
+        return _methodCache.GetOrAdd(methodInfo, mi =>
+        {
+            logger.LogDebug("Caching method details for {MethodName}", mi.Name);
+            var parameters = mi.GetParameters();
+            return new MethodDetails
+            {
+                MethodInfo = mi,
+                Parameters = parameters
+            };
+        });
+    }
+
+    public class MethodDetails
+    {
+        public MethodInfo MethodInfo { get; set; }
+        public ParameterInfo[] Parameters { get; set; }
+
+        public void Deconstruct(out MethodInfo methodInfo, out ParameterInfo[] parameters)
+        {
+            methodInfo = this.MethodInfo;
+            parameters = this.Parameters;
+        }
+    }
+    #endregion
+
+    #region BindAsyncOverrideCache
+    private static readonly ConcurrentDictionary<Type, bool> _bindingCache = new ConcurrentDictionary<Type, bool>();
+
+    public static bool IsBindAsyncOverridden(Type endpointType)
+    {
+        return _bindingCache.GetOrAdd(endpointType, type =>
+        {
+            var method = type.GetMethod(nameof(IEndpoint.BindAsync), [typeof(HttpRequest), typeof(CancellationToken)]);
+            return method != null && method.DeclaringType != typeof(IEndpoint);
+        });
+    }
+    #endregion
 }

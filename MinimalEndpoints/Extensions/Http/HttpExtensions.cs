@@ -8,6 +8,7 @@ using Microsoft.Net.Http.Headers;
 using MinimalEndpoints.Extensions.Http.ContentNegotiation;
 using MinimalEndpoints.Extensions.Http.ModelBinding;
 using Newtonsoft.Json.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -43,7 +44,7 @@ public static class HttpExtensions
             logger?.LogError(e, "Unhandled error occured while trying to bind incoming data");
 
             var env = request.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
-           
+
             //throw exception if whe are in dev environment or its a binding error
             if (env!.IsDevelopment() || e is EndpointModelBindingException) throw;
 
@@ -114,6 +115,33 @@ public static class HttpExtensions
         {
             if (usesTranscodingStream) await inputStream.DisposeAsync();
         }
+    }
+
+    public static IReadOnlyList<IFormFile> ReadFormFiles(this HttpRequest request, string fieldName)
+    {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request), "HttpRequest cannot be null.");
+        }
+
+        if (string.IsNullOrEmpty(fieldName))
+        {
+            throw new ArgumentException("Field name cannot be null or empty.", nameof(fieldName));
+        }
+
+        if (!request.HasFormContentType || request.Form.Files.Count == 0)
+        {
+            return null!; // Or throw an appropriate exception if a file is expected
+        }
+
+        var files = request.Form.Files.GetFiles(fieldName);
+
+        return files.Count switch
+        {
+            0 => null!, // Or throw an appropriate exception if a file is expected
+            1 => [files[0]],
+            _ => files
+        };
     }
 
     public static bool HasXmlContentType(this HttpRequest request)
