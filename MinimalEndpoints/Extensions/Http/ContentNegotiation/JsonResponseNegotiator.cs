@@ -19,10 +19,10 @@ public class JsonResponseNegotiator : ContentNegotiatorBase, IResponseNegotiator
 
     public bool CanHandle(MediaTypeHeaderValue accept)
     {
-        return accept.MediaType.ToString().IndexOf("json", StringComparison.OrdinalIgnoreCase) >= 0;
+        return accept.MediaType.ToString().Contains("json", StringComparison.OrdinalIgnoreCase);
     }
 
-    public async Task Handle(HttpContext httpContext, object model, int? statusCode, string? contentType, CancellationToken cancellationToken)
+    public async Task Handle(HttpContext httpContext, object? model, int? statusCode, string? contentType, CancellationToken cancellationToken)
     {
         httpContext.Response.ContentType = CheckContentType(contentType, "json") ?? "application/json; charset=utf-8";
         if (statusCode.HasValue) httpContext.Response.StatusCode = statusCode.Value;

@@ -423,7 +423,7 @@ To use your new model binding capabilities you can simply inherit your endpoints
 public class XmlEndpointModelBinder : IEndpointModelBinder
 {
     public bool CanHandle(string? contentType)
-        => contentType?.IndexOf("xml", StringComparison.OrdinalIgnoreCase) != -1;
+        => !string.IsNullOrWhiteSpace(contentType) && contentType.Contains("xml", StringComparison.OrdinalIgnoreCase);
 
     public async ValueTask<TModel?> BindAsync<TModel>(HttpRequest request, CancellationToken cancellationToken)
     {
@@ -474,8 +474,43 @@ public class CreateCustomer : EndpointBase<CustomerDto, Customer>
 
 CustomerDto? model = await httpRequest.GetModelAsync<CustomerDto>(cancellationToken);
 
+```
+
+You can also implement the BindAsync method on the IEndpoint interface, this will enable you to use custom data binding logic in your application.
+
+```csharp
+
+public class GetCustomerById : GetByIdEndpoint<Customer>
+{
+    private readonly ICustomerRepository _customerRepository;
+
+    public GetCustomerById(ICustomerRepository customerRepository)
+    {
+        _customerRepository = customerRepository;
+    }
+
+    public override string Pattern => "/customers/{id:int}";
+
+
+    public ValueTask<object> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
+    {
+        var routeData = request.RouteValues["id"];
+
+        if (routeData == null) return ValueTask.FromResult((object)0);
+
+        var id = Convert.ChangeType(routeData, typeof(int));
+
+        return ValueTask.FromResult(id!);
+    }
+
+    public override Task<Customer> SendAsync(int id)
+    {
+        return Task.FromResult(_customerRepository.GetById(id));
+    }
+}
 
 ```
+
 
 Content negotiation can be extended by implementing the [IResponseNegotiator](https://github.com/NyronW/MinimalEndpoints/blob/master/MinimalEndpoints/Extensions/Http/ContentNegotiation/IResponseNegotiator.cs) interface. Once you've regitered your class, you can utalize the new feature by inheriting from the EndpointBase<TRequest,TResponse> class or using the SendAsync extension method on the HttpResponse object. MinimalEndpoint adds xml support to the existing content types already supported by ASP.NET Minimal API.
 

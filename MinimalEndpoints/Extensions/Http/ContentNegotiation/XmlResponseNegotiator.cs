@@ -10,10 +10,10 @@ public class XmlResponseNegotiator : ContentNegotiatorBase, IResponseNegotiator
 
     public bool CanHandle(MediaTypeHeaderValue accept)
     {
-        return accept.MediaType.ToString().IndexOf("xml", StringComparison.OrdinalIgnoreCase) >= 0;
+        return accept.MediaType.ToString().Contains("xml", StringComparison.OrdinalIgnoreCase);
     }
 
-    public async Task Handle(HttpContext httpContext, object model, int? statusCode, string? contentType, CancellationToken cancellationToken)
+    public async Task Handle(HttpContext httpContext, object? model, int? statusCode, string? contentType, CancellationToken cancellationToken)
     {
         // Create a serializer for the model type
         var type = model?.GetType() ?? typeof(object);

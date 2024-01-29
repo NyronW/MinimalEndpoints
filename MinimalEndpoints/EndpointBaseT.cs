@@ -46,10 +46,6 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
                 {
                     _logger.LogDebug("One or more validation errors occured");
 
-                    //var errorDictionary = validationErrors
-                    //    .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
-                    //    .ToDictionary(failureGroup => failureGroup.Key, failureGroup => failureGroup.ToArray());
-
                     var errorDictionary = new Dictionary<string, string[]>();
                     foreach (var error in validationErrors)
                     {

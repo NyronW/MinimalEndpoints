@@ -143,28 +143,40 @@ public static class HttpExtensions
         return request.HasXmlContentType(out _);
     }
 
-    public static Task SendAsync(this HttpResponse response, object obj, int? statusCode, string? contentType = null, CancellationToken cancellationToken = default)
+    public static Task SendAsync(this HttpResponse response, object? obj, int? statusCode, string? contentType = null, CancellationToken cancellationToken = default)
     {
-        var negotiators = response.HttpContext.RequestServices.GetServices<IResponseNegotiator>().ToList();
-        IResponseNegotiator? negotiator = null;
+        var negotiators = response.HttpContext.RequestServices.GetServices<IResponseNegotiator>();
 
-        MediaTypeHeaderValue.TryParseList(response.HttpContext.Request.Headers["Accept"], out var accept);
-        if (accept != null)
+        IResponseNegotiator? selectedNegotiator = null;
+        double highestQuality = 0.0;
+
+        if (MediaTypeHeaderValue.TryParseList(response.HttpContext.Request.Headers["Accept"], out var acceptHeaders) && acceptHeaders != null)
         {
-            var ordered = accept.OrderByDescending(x => x.Quality ?? 1);
-
-            foreach (var acceptHeader in ordered)
+            foreach (var acceptHeader in acceptHeaders)
             {
-                negotiator = negotiators.FirstOrDefault(x => x.CanHandle(acceptHeader));
-                if (negotiator != null) break;
+                double quality = acceptHeader.Quality ?? 1.0;
+
+                if (quality >= highestQuality)
+                {
+                    foreach (var negotiator in negotiators)
+                    {
+                        if (negotiator.CanHandle(acceptHeader))
+                        {
+                            selectedNegotiator = negotiator;
+                            highestQuality = quality;
+                            break; // Break as we found a negotiator for the highest quality so far
+                        }
+                    }
+                }
             }
         }
 
-        if (negotiator == null)
-            negotiator = negotiators.First(x => x.CanHandle(new MediaTypeHeaderValue("application/json")));
+        // Fallback to default negotiator if no specific one is found
+        selectedNegotiator ??= negotiators.First(x => x.CanHandle(new MediaTypeHeaderValue("application/json")));
 
-        return negotiator.Handle(response.HttpContext, obj, statusCode, contentType, cancellationToken);
+        return selectedNegotiator.Handle(response.HttpContext, obj, statusCode, contentType, cancellationToken);
     }
+
 
     #region Helper
     private static bool HasXmlContentType(this HttpRequest request, out StringSegment charset)

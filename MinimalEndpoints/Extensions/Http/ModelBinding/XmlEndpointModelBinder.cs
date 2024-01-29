@@ -5,7 +5,7 @@ namespace MinimalEndpoints.Extensions.Http.ModelBinding;
 public class XmlEndpointModelBinder : IEndpointModelBinder
 {
     public bool CanHandle(string? contentType)
-        => contentType?.IndexOf("xml", StringComparison.OrdinalIgnoreCase) != -1;
+        => !string.IsNullOrWhiteSpace(contentType) && contentType.Contains("xml", StringComparison.OrdinalIgnoreCase);
 
     public async ValueTask<TModel?> BindAsync<TModel>(HttpRequest request, CancellationToken cancellationToken)
     {

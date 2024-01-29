@@ -15,19 +15,24 @@ public class EndpointHandler
     {
         _handler = CreateHandler();
         _logger = logger;
+
+        _valueTypeInstances.GetOrAdd(typeof(int), Activator.CreateInstance);
+        _valueTypeInstances.GetOrAdd(typeof(bool), Activator.CreateInstance);
+        _valueTypeInstances.GetOrAdd(typeof(double), Activator.CreateInstance);
+        _valueTypeInstances.GetOrAdd(typeof(float), Activator.CreateInstance);
     }
 
     private Func<IEndpoint, IServiceProvider, ILoggerFactory, HttpRequest, CancellationToken, Task<object?>> CreateHandler()
     {
         return async (endpoint, sp, loggerFactory, request, cancellationToken) =>
         {
-            object result = null!;
+            object? result = null!;
 
             try
             {
                 var ep = (IEndpoint)sp.GetService(endpoint.GetType())!;
 
-                var (methodInfo, parameters) = GetMethodDetails(ep.Handler.Method, _logger);
+                var (methodInfo, parameters) = GetMethodDetails(ep.Handler.Method);
                 var args = new object[parameters.Length];
 
                 for (int i = 0; i < parameters.Length; i++)
@@ -36,11 +41,7 @@ public class EndpointHandler
                     if (param is not { Name.Length: > 0 }) continue;
 
                     object? value = null;
-                    object requestBodyObject = null!;
-
-                    string stringValue = request.RouteValues[param.Name]?.ToString()! ??
-                                         request.Query[param.Name].FirstOrDefault()! ??
-                                         request.Headers[param.Name].FirstOrDefault()!;
+                    object? requestBodyObject = null!;
 
                     var (isOverridden, BindAsync) = IsBindAsyncOverridden(ep.GetType());
 
@@ -61,11 +62,17 @@ public class EndpointHandler
                     {
                         value = request;
                     }
-                    else if (!string.IsNullOrEmpty(stringValue))
+                    else
                     {
-                        value = ConvertParameter(stringValue, param.ParameterType);
+                        string stringValue = request.RouteValues[param.Name]?.ToString()! ??
+                                             request.Query[param.Name].FirstOrDefault()! ??
+                                             request.Headers[param.Name].FirstOrDefault()!;
+
+                        if (!string.IsNullOrEmpty(stringValue))
+                            value = ConvertParameter(stringValue, param.ParameterType);
                     }
-                    else if (param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
+
+                    if (value == null && param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
                     {
                         if (param.HasDefaultValue)
                         {
@@ -73,7 +80,7 @@ public class EndpointHandler
                         }
                         else
                         {
-                            _logger.LogDebug($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
+                            _logger.LogDebug("The value for parameter '{ParameterName}' was not found in the request and does not have a default value.", param.Name);
                             throw new InvalidOperationException($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
                         }
                     }
@@ -82,19 +89,19 @@ public class EndpointHandler
                     {
                         if (requestBodyObject == null && request is { ContentLength: > 0, ContentType.Length: > 0 })
                         {
-                            if (request.ContentType.IndexOf("json", StringComparison.OrdinalIgnoreCase) != -1)
+                            if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
                             {
-                                requestBodyObject = (await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken))!;
+                                requestBodyObject = await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken);
                             }
-                            else if (request.ContentType.IndexOf("xml", StringComparison.OrdinalIgnoreCase) != -1)
+                            else if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
                             {
-                                requestBodyObject = (await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken))!;
+                                requestBodyObject = await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken);
                             }
                         }
-                        else                                                                                                      
+                        else
                             _logger.LogDebug("No data was found the request body or content type '{ContentType}' is not supported", request.ContentType);
 
-                        value = requestBodyObject ?? (param.HasDefaultValue ? param.DefaultValue : null!)!;
+                        value = requestBodyObject ?? (param.HasDefaultValue ? param.DefaultValue : null);
                     }
 
                     args[i] = value!;
@@ -107,7 +114,7 @@ public class EndpointHandler
 
                     var task = (Task)methodInfo.Invoke(ep.Handler.Target, args)!;
                     await task.ConfigureAwait(false);
-                    result = isGenericTask ? ((dynamic)task).Result : null!;
+                    result = isGenericTask ? ((dynamic)task).Result : null;
                 }
                 else
                 {
@@ -130,7 +137,7 @@ public class EndpointHandler
         };
     }
 
-    public Task<object> HandleAsync(IEndpoint endpoint, IServiceProvider sp, ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken)
+    public Task<object?> HandleAsync(IEndpoint endpoint, IServiceProvider sp, ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken)
     {
         return _handler(endpoint, sp, loggerFactory, request, cancellationToken);
     }
@@ -139,6 +146,8 @@ public class EndpointHandler
     private static readonly ConcurrentDictionary<Type, object?> _valueTypeInstances = new ConcurrentDictionary<Type, object?>();
     private object? ConvertParameter(string value, Type type)
     {
+        if (type == typeof(string)) return value;
+
         if (string.IsNullOrEmpty(value))
         {
             if (!type.IsValueType) return null;
@@ -165,12 +174,10 @@ public class EndpointHandler
         }
     }
 
-
-
     #region MethodDetailsCache
     private static readonly ConcurrentDictionary<MethodInfo, MethodDetails> _methodCache = new ConcurrentDictionary<MethodInfo, MethodDetails>();
 
-    private MethodDetails GetMethodDetails(MethodInfo methodInfo, ILogger logger)
+    private MethodDetails GetMethodDetails(MethodInfo methodInfo)
     {
         if (methodInfo == null)
         {

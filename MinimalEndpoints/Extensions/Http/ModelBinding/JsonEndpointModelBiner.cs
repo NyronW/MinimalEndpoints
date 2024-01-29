@@ -5,8 +5,7 @@ namespace MinimalEndpoints.Extensions.Http.ModelBinding;
 public class JsonEndpointModelBiner : IEndpointModelBinder
 {
     public bool CanHandle(string? contentType)
-        => contentType?.IndexOf("json", StringComparison.OrdinalIgnoreCase) != -1;
-
+        => !string.IsNullOrWhiteSpace(contentType) &&  contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
 
     public async ValueTask<TModel?> BindAsync<TModel>(HttpRequest request, CancellationToken cancellationToken)
     {
