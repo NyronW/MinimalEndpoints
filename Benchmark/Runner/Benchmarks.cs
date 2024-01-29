@@ -49,19 +49,6 @@ public class Benchmarks
     }
 
     [Benchmark]
-    public Task MinimalEndpoints()
-    {
-        var msg = new HttpRequestMessage()
-        {
-            Method = HttpMethod.Post,
-            RequestUri = new Uri($"{MinimalEndpointClient.BaseAddress}benchmark/ok/123"),
-            Content = Payload
-        };
-
-        return MinimalEndpointClient.SendAsync(msg);
-    }
-
-    [Benchmark]
     public Task FastEndpoints()
     {
         var msg = new HttpRequestMessage()
@@ -72,6 +59,19 @@ public class Benchmarks
         };
 
         return FastEndpointClient.SendAsync(msg);
+    }
+
+    [Benchmark]
+    public Task MinimalEndpoints()
+    {
+        var msg = new HttpRequestMessage()
+        {
+            Method = HttpMethod.Post,
+            RequestUri = new Uri($"{MinimalEndpointClient.BaseAddress}benchmark/ok/123"),
+            Content = Payload
+        };
+
+        return MinimalEndpointClient.SendAsync(msg);
     }
 }
 

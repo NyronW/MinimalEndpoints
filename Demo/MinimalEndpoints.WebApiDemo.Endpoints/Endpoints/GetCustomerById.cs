@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
 /// <summary>
@@ -25,6 +26,19 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
     }
 
     public override string Pattern => "/customers/{id:int}";
+
+
+    public ValueTask<object> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
+    {
+        var routeData = request.RouteValues["id"];
+
+        if (routeData == null) return ValueTask.FromResult((object)0);
+
+        var id = Convert.ChangeType(routeData, typeof(int));
+
+        return ValueTask.FromResult(id!);
+    }
+
 
     /// <summary>
     /// Get customer by unique identifier

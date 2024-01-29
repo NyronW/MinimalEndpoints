@@ -64,8 +64,7 @@ public class Endpoint : Endpoint<Request>
 {
     public override void Configure()
     {
-        Verbs(Http.POST);
-        Routes("/benchmark/ok/{id}");
+        Post("/benchmark/ok/{id}");
         AllowAnonymous();
     }
 

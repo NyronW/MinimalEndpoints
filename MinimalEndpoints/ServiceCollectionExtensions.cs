@@ -74,6 +74,8 @@ public static class ServiceCollectionExtensions
 
     private static void RegisterMinimalEndpointServices(IServiceCollection services)
     {
+        services.AddSingleton<EndpointHandler>();
+
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, EndpointAuthorizationMiddlewareResultHandler>();
 
         services.AddTransient<IResponseNegotiator, JsonResponseNegotiator>();

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using MinimalEndpoints.Extensions;
 using MinimalEndpoints.Extensions.Http;
 using MinimalEndpoints.Extensions.Http.ModelBinding;
@@ -28,7 +29,8 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
 
     protected virtual async Task<IResult> HandlerCore(HttpRequest httpRequest, CancellationToken cancellationToken = default)
     {
-        var correlationId = httpRequest.Headers["X-CorrelationId"].FirstOrDefault() ?? Guid.NewGuid().ToString();
+        var correlationIdHeader = httpRequest.Headers["X-CorrelationId"];
+        var correlationId = StringValues.IsNullOrEmpty(correlationIdHeader) ? Guid.NewGuid().ToString() : correlationIdHeader.ToString();
         httpRequest.HttpContext.Response.Headers["X-CorrelationId"] = correlationId;
 
         using (_logger.AddContext("CorrelationId", correlationId))
@@ -38,15 +40,26 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
             {
                 TRequest? request = await httpRequest.GetModelAsync<TRequest>(cancellationToken);
 
-                var validationErrors = await ValidateAsync(request);
+                var validationErrors = await ValidateAsync(request!);
 
                 if (validationErrors.Count() > 0)
                 {
                     _logger.LogDebug("One or more validation errors occured");
 
-                    var errorDictionary = validationErrors
-                        .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
-                        .ToDictionary(failureGroup => failureGroup.Key, failureGroup => failureGroup.ToArray());
+                    //var errorDictionary = validationErrors
+                    //    .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
+                    //    .ToDictionary(failureGroup => failureGroup.Key, failureGroup => failureGroup.ToArray());
+
+                    var errorDictionary = new Dictionary<string, string[]>();
+                    foreach (var error in validationErrors)
+                    {
+                        if (!errorDictionary.TryGetValue(error.PropertyName, out var errors))
+                        {
+                            errors = [];
+                            errorDictionary[error.PropertyName] = errors;
+                        }
+                        errorDictionary[error.PropertyName] = [.. errors, error.ErrorMessage];
+                    }
 
                     var problem = new ValidationProblemDetails(errorDictionary)
                     {
@@ -60,7 +73,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
                     return Results.Extensions.Problem(problem);
                 }
 
-                return await HandleRequestAsync(request, httpRequest, cancellationToken);
+                return await HandleRequestAsync(request!, httpRequest, cancellationToken);
             }
             catch (EndpointModelBindingException ex)
             {
@@ -81,12 +94,12 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
             }
             catch (Exception e)
             {
-                _logger.LogError($"Unhandled exception occured while executing request for: {httpRequest.Path.Value}", e);
+                _logger.LogError(e, "Unhandled exception occurred while executing request for: {Path}", httpRequest.Path.Value);
 
                 var env = httpRequest.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
 
                 //throw error if in development environment
-                if (env.IsDevelopment()) throw;
+                if (env!.IsDevelopment()) throw;
 
                 IHaveProblemDetails? exceptionDetails = e is IHaveProblemDetails ? (IHaveProblemDetails)e : null;
 

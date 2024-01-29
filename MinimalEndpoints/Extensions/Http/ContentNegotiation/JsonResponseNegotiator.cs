@@ -7,11 +7,14 @@ namespace MinimalEndpoints.Extensions.Http.ContentNegotiation;
 
 public class JsonResponseNegotiator : ContentNegotiatorBase, IResponseNegotiator
 {
-    private readonly JsonSerializerOptions jsonSettings;
+    private static readonly JsonSerializerOptions JsonSettings = new JsonSerializerOptions
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     public JsonResponseNegotiator()
     {
-        jsonSettings = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     }
 
     public bool CanHandle(MediaTypeHeaderValue accept)
@@ -24,6 +27,6 @@ public class JsonResponseNegotiator : ContentNegotiatorBase, IResponseNegotiator
         httpContext.Response.ContentType = CheckContentType(contentType, "json") ?? "application/json; charset=utf-8";
         if (statusCode.HasValue) httpContext.Response.StatusCode = statusCode.Value;
 
-        await JsonSerializer.SerializeAsync(httpContext.Response.Body, model, model == null ? typeof(object) : model.GetType(), jsonSettings, cancellationToken);
+        await JsonSerializer.SerializeAsync(httpContext.Response.Body, model, model == null ? typeof(object) : model.GetType(), JsonSettings, cancellationToken);
     }
 }

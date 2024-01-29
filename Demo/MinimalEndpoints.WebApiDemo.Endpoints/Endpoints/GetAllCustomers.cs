@@ -28,6 +28,7 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     /// <returns></returns>
     public Delegate Handler => GetCustomers;
 
+
     private IResult GetCustomers([FromQuery] int pageNo, [FromQuery] int pageSize = 10)
     {
         var customers = _customerRepository.GetAll();

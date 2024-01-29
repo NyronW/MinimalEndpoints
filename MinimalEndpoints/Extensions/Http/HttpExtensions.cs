@@ -7,11 +7,7 @@ using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using MinimalEndpoints.Extensions.Http.ContentNegotiation;
 using MinimalEndpoints.Extensions.Http.ModelBinding;
-using Newtonsoft.Json.Linq;
-using System.Reflection;
 using System.Text;
-using System.Threading;
-using System.Xml;
 using System.Xml.Serialization;
 
 namespace MinimalEndpoints.Extensions.Http;
@@ -20,14 +16,17 @@ public static class HttpExtensions
 {
     public static async ValueTask<TModel?> GetModelAsync<TModel>(this HttpRequest request, CancellationToken cancellationToken = default)
     {
+        var logger = request.HttpContext.RequestServices.GetService<ILogger>();
+        var env = request.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
+
         try
         {
-            var binders = request.HttpContext.RequestServices.GetServices<IEndpointModelBinder>().ToList();
-
-            IEndpointModelBinder? binder = binders.FirstOrDefault(x => x.CanHandle(request.ContentType));
+            var binders = request.HttpContext.RequestServices.GetServices<IEndpointModelBinder>();
+            var binder = binders.FirstOrDefault(x => x.CanHandle(request.ContentType));
 
             if (binder == null)
             {
+                logger?.LogError("Unable to read the request because the request content type '{ContentType}' is not a supported content type.", request.ContentType);
                 throw new EndpointModelBindingException(
                     $"Unable to read the request because the request content type '{request.ContentType}' is not a supported content type.",
                     instance: request.Path.Value);
@@ -39,18 +38,13 @@ public static class HttpExtensions
         }
         catch (Exception e)
         {
-            var logger = request.HttpContext.RequestServices.GetService<ILogger>();
-
             logger?.LogError(e, "Unhandled error occured while trying to bind incoming data");
-
-            var env = request.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
 
             //throw exception if whe are in dev environment or its a binding error
             if (env!.IsDevelopment() || e is EndpointModelBindingException) throw;
 
-
             throw new EndpointModelBindingException(
-              $"An error occurred while deserializing input data.",
+              "An error occurred while deserializing input data.",
               instance: request.Path.Value, exception: e);
         }
     }
