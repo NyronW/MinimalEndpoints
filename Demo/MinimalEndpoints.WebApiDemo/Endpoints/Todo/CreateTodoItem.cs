@@ -28,7 +28,7 @@ public class CreateTodoItem : Endpoint<string, IResult>
     /// <summary>
     /// Creates new todo item
     /// </summary>
-    /// <param name="description">Todo description</param>
+    /// <param name="description">Description of task</param>
     /// <returns>New created item</returns>
     /// <remarks>
     /// Sample request:

@@ -4,14 +4,16 @@ namespace MinimalEndpoints;
 
 public class EndpointDescriptor
 {
+    public string Name { get; }
     public string ClassName { get; }
     public string Pattern { get; }
     public string HttpMethod { get; }
     public string HandlerMethod { get; }
 
 
-    public EndpointDescriptor(string className, string pattern, string httpMethod, string handlerMethod)
+    public EndpointDescriptor(string name, string className, string pattern, string httpMethod, string handlerMethod)
     {
+        Name = name;
         ClassName = className;
         Pattern = pattern;
         HttpMethod = httpMethod;

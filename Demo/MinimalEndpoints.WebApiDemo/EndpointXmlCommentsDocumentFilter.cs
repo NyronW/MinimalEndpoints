@@ -31,6 +31,7 @@ public class EndpointXmlCommentsDocumentFilter : IDocumentFilter
             var xmlMemberName = $"M:{descriptor.HandlerMethod}";
             if (_xmlComments.TryGetValue(xmlMemberName, out var xmlComments))
             {
+
                 if (string.IsNullOrEmpty(descriptor.Pattern) || descriptor.HttpMethod == null) continue;
 
                 var operationType = descriptor.HttpMethod.ToOpenApiOperationMethod();
@@ -45,15 +46,20 @@ public class EndpointXmlCommentsDocumentFilter : IDocumentFilter
 
                 operation.Summary = xmlComments.Summary;
                 operation.Description = xmlComments.Description;
+                operation.Tags.Add(new()
+                {
+                    Name = descriptor.Pattern,
+                    Description = xmlComments.Description,
+                });
 
                 foreach (var parameter in xmlComments.Parameters)
                 {
                     operation.Parameters.Add(new OpenApiParameter
                     {
                         Name = parameter.Name,
-                        In = ParameterLocation.Query,
+                        In = ParameterLocation.Path,
                         Description = parameter.Description,
-                        Required = true
+                        Required = true,
                     });
                 }
 
@@ -85,6 +91,7 @@ public static class XmlCommentsReader
                 continue;
 
             var summary = member.Element("summary")?.Value.Trim();
+            var remarks = member.Element("remarks")?.Value.Trim();
             var parameters = member.Elements("param")
                 .Select(p => new XmlCommentParameter
                 {
@@ -105,7 +112,9 @@ public static class XmlCommentsReader
             {
                 comments.Add(name, new XmlComments
                 {
+                    Name = name,
                     Summary = summary,
+                    Description = remarks,
                     Parameters = parameters,
                     Responses = responses
                 });
@@ -139,8 +148,10 @@ public static class HttpMethodExtensions
 
 public class XmlComments
 {
+    public string Name { get; set; }
     public string Summary { get; set; }
     public string Description { get; set; }
+    public string RequestBody { get; set; }
     public List<XmlCommentParameter> Parameters { get; set; } = new List<XmlCommentParameter>();
     public List<XmlCommentResponse> Responses { get; set; } = new List<XmlCommentResponse>();
 }

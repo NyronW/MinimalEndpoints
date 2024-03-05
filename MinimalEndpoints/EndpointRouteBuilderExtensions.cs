@@ -43,6 +43,7 @@ public static class EndpointRouteBuilderExtensions
 
         foreach (var endpoint in endpoints)
         {
+            var name = endpoint.GetType().Name;
             var pattern = endpoint.Pattern;
 
             if (!string.IsNullOrEmpty(serviceConfig.DefaultRoutePrefix))
@@ -68,7 +69,7 @@ public static class EndpointRouteBuilderExtensions
             var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
                     .Select(p => p.ParameterType.FullName!.Replace("+", ".")));
             var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
-            endpointDescriptors.Add(new EndpointDescriptor(endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodName));
+            endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodName));
 
             var mapping = builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
 
@@ -136,10 +137,6 @@ public static class EndpointRouteBuilderExtensions
                 mapping.WithGroupName(tagAttr.GroupName);
             else if (serviceConfig.DefaultGroupName is { })
                 mapping.WithGroupName(serviceConfig.DefaultGroupName);
-
-            if (!string.IsNullOrWhiteSpace(tagAttr.Description)) mapping.WithDescription(tagAttr.Description);
-
-            if (!string.IsNullOrWhiteSpace(tagAttr.RateLimitingPolicyName)) mapping.RequireRateLimiting(tagAttr.RateLimitingPolicyName);
         }
 
         return builder;
