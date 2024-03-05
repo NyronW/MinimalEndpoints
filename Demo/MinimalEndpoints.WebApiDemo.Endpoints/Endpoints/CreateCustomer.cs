@@ -29,6 +29,11 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
 
         public override HttpMethod Method => HttpMethod.Post;
 
+        /// <summary>
+        /// Create new customer
+        /// </summary>
+        /// <param name="customerDto">New customer to create</param>
+        /// <returns></returns>
         public override async Task<IResult> HandleRequestAsync(CustomerDto customerDto, HttpRequest httpRequest, CancellationToken cancellationToken = default)
         {
             try

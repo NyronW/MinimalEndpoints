@@ -11,7 +11,7 @@ public class EndpointHandler
     private readonly ILogger<EndpointHandler> _logger;
     private readonly Func<IEndpoint, IServiceProvider, ILoggerFactory, HttpRequest, CancellationToken, Task<object?>> _handler;
 
-    public EndpointHandler(ILogger<EndpointHandler> logger)
+    public EndpointHandler(ILogger<EndpointHandler> logger )
     {
         _handler = CreateHandler();
         _logger = logger;

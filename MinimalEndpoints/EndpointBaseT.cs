@@ -23,6 +23,8 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
 
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }
+
+    [HandlerMethod]
     public abstract Task<IResult> HandleRequestAsync(TRequest request, HttpRequest httpRequest, CancellationToken cancellationToken = default);
 
     public Delegate Handler => HandlerCore;

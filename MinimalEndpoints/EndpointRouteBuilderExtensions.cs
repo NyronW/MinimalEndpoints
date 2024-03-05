@@ -6,12 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MinimalEndpoints.Extensions.Http;
-using System.Collections.Concurrent;
 using System.Reflection;
-using System.Text.Json;
-using System.Threading;
-using System.Xml.Serialization;
 
 namespace MinimalEndpoints;
 
@@ -36,13 +31,15 @@ public static class EndpointRouteBuilderExtensions
         using var scope = builder.ServiceProvider.CreateScope();
         var services = scope.ServiceProvider;
 
+        var endpointDescriptors = builder.ServiceProvider.GetRequiredService<EndpointDescriptors>();
+
         var endpoints = services.GetServices<IEndpoint>();
         if (endpoints == null) return builder;
 
         var serviceConfig = new EndpointConfiguration();
         configuration?.Invoke(serviceConfig);
 
-        var endpointHandler  = services.GetRequiredService<EndpointHandler>();
+        var endpointHandler = services.GetRequiredService<EndpointHandler>();
 
         foreach (var endpoint in endpoints)
         {
@@ -59,7 +56,19 @@ public static class EndpointRouteBuilderExtensions
             }
 
             var methods = new[] { endpoint.Method.Method };
-         
+
+            // Create and add the descriptor to the collection
+            MethodInfo handlerMethodInfo = endpoint.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
+                                        .FirstOrDefault(m => m.GetCustomAttribute<HandlerMethodAttribute>() != null)!;
+            if (handlerMethodInfo == null)
+            {
+                handlerMethodInfo = endpoint.Handler.Method;
+            }
+
+            var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
+                    .Select(p => p.ParameterType.FullName!.Replace("+", ".")));
+            var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
+            endpointDescriptors.Add(new EndpointDescriptor(endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodName));
 
             var mapping = builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
 

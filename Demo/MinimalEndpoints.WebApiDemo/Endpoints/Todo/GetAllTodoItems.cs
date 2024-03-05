@@ -28,6 +28,7 @@ public class GetAllTodoItems : IEndpoint
     /// <returns>Returns all available todo items</returns>
     /// <response code="200">Returns all available items</response>
     /// <response code="500">Internal server error occured</response>
+    [HandlerMethod]
     public async Task<IEnumerable<TodoItem>> SendAsync()
     {
         return await _repository.GetAllAsync();

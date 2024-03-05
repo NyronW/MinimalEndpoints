@@ -74,6 +74,10 @@ public static class ServiceCollectionExtensions
 
     private static void RegisterMinimalEndpointServices(IServiceCollection services)
     {
+        var descriptions = new EndpointDescriptors();
+
+        services.AddSingleton(descriptions);
+
         services.AddSingleton<EndpointHandler>();
 
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, EndpointAuthorizationMiddlewareResultHandler>();

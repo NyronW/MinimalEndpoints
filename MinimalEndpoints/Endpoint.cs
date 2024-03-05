@@ -4,6 +4,8 @@ public abstract class Endpoint<TResponse> : EndpointBase, IEndpoint
 {
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }
+
+    [HandlerMethod]
     public abstract Task<TResponse> SendAsync();
 
     public Delegate Handler => HandlerCore;
@@ -18,6 +20,8 @@ public abstract class Endpoint<TRequest, TResponse> : EndpointBase, IEndpoint
 {
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }
+
+    [HandlerMethod]
     public abstract Task<TResponse> SendAsync(TRequest request);
 
     public Delegate Handler => SendAsync;
