@@ -2,6 +2,7 @@
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
 {
+    [Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = new[] { "application/xml" })]
     [Endpoint(TagName ="Customer")]
     public class UpdateCustomer : IEndpoint
     {
@@ -24,7 +25,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
         /// <param name="id"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        private IResult HandleCore(string id, string name)
+        private IResult HandleCore(string id, CustomerDto customerDto)
         {
             return Results.Ok();
         }

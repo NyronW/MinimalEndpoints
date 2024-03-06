@@ -24,7 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\MinimalEndpoints.Swashbuckle.AspNetCore\MinimalEndpoints.Swashbuckle.AspNetCore.csproj" />
     <ProjectReference Include="..\MinimalEndpoints.WebApiDemo.Endpoints\MinimalEndpoints.WebApiDemo.Endpoints.csproj" />
     <ProjectReference Include="..\..\MinimalEndpoints\MinimalEndpoints.csproj" />
   </ItemGroup>

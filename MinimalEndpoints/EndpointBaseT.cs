@@ -65,7 +65,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
                         Title = "One or more validation error occured.",
                         Detail = "Please refer to the errors property for additional details.",
                         Status = StatusCodes.Status400BadRequest,
-                        Instance = httpRequest.Path.Value
+                        Instance = httpRequest.Path
                     };
 
                     return Results.Extensions.Problem(problem);
@@ -85,14 +85,14 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
                     Title = exceptionDetails.Title,
                     Detail = exceptionDetails.Detail ?? "Please refer to the errors property for additional details.",
                     Status = exceptionDetails.Status,
-                    Instance = exceptionDetails.Instance ?? httpRequest.Path.Value,
+                    Instance = exceptionDetails.Instance ?? httpRequest.Path,
                 };
 
                 return Results.Extensions.Problem(problem);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Unhandled exception occurred while executing request for: {Path}", httpRequest.Path.Value);
+                _logger.LogError(e, "Unhandled exception occurred while executing request for: {Path}", httpRequest.Path);
 
                 var env = httpRequest.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
 
@@ -107,7 +107,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
                     Title = exceptionDetails?.Title ?? "An internal server error occured.",
                     Detail = exceptionDetails?.Detail ?? "Please retry your last request or contact of support team",
                     Status = exceptionDetails?.Status ?? StatusCodes.Status500InternalServerError,
-                    Instance = exceptionDetails?.Instance ?? httpRequest.Path.Value,
+                    Instance = exceptionDetails?.Instance ?? httpRequest.Path,
                 };
 
                 return Results.Extensions.Problem(problem);

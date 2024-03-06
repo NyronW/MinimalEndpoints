@@ -16,25 +16,25 @@ public class SecureSwaggerEndpointhRequirementFilter : IOperationFilter
         {
             return;
         }
-        if (operation.Parameters == null)
-            operation.Parameters = new List<OpenApiParameter>();
+
+        operation.Parameters ??= new List<OpenApiParameter>();
 
         operation.Security = new List<OpenApiSecurityRequirement>
+        {
+            new()
             {
-                new OpenApiSecurityRequirement
                 {
+                    new OpenApiSecurityScheme
                     {
-                        new OpenApiSecurityScheme
+                        Reference = new OpenApiReference
                         {
-                            Reference = new OpenApiReference
-                            {
-                                Type=ReferenceType.SecurityScheme,
-                                Id="Bearer"
-                            }
-                        },
-                        new string[]{}
-                    }
+                            Type=ReferenceType.SecurityScheme,
+                            Id="Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
                 }
-            };
+            }
+        };
     }
 }
