@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MinimalEndpoints.Swashbuckle.AspNetCore;
 using MinimalEndpoints.WebApiDemo.Authorization;
 using MinimalEndpoints.WebApiDemo.Endpoints;
 using MinimalEndpoints.WebApiDemo.Services;
@@ -70,20 +71,13 @@ public static class ProgramExtensions
             c.OperationFilter<SecureSwaggerEndpointhRequirementFilter>();
 
             // Set the comments path for the Swagger JSON and UI.
-            //var xmlFiles = Directory.GetFiles(AppContext.BaseDirectory)
-            //    .Where(f => Path.GetExtension(f) == ".xml");
+            var xmlFiles = Directory.GetFiles(AppContext.BaseDirectory)
+                .Where(f => Path.GetExtension(f) == ".xml");
 
-            //foreach (var xmlFile in xmlFiles)
-            //{
-            //    c.IncludeXmlComments(xmlFile);
-            //}
+            var descriptors = builder.Services.BuildServiceProvider()
+            .GetService<EndpointDescriptors>();
 
-            var descriptors = builder.Services.BuildServiceProvider().GetService<EndpointDescriptors>();
-
-            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-            c.DocumentFilter<EndpointXmlCommentsDocumentFilter>(xmlPath, descriptors);
-
+            c.DocumentFilter<EndpointXmlCommentsDocumentFilter>(xmlFiles, descriptors);
 
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
