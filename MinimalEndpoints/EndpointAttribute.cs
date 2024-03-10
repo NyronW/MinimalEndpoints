@@ -9,5 +9,6 @@ public class EndpointAttribute : Attribute
     public bool ExcludeFromDescription { get; set; } = false;
     public string? RoutePrefixOverride { get; set; } = null;
     public string? Description { get; set; } = null;
-    public string? RateLimitingPolicyName { get; set; } = null;
+    public string? RateLimitingPolicyName { get; set; } = null!;
+    public bool DisableRateLimiting { get; set; } = false;
 }

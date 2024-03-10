@@ -296,7 +296,8 @@ Your endpoints will be visible via Swagger with no extra effort, however you can
 * RoutePrefixOverride: This property is used to override the default route prefix, if it was configured at startup.
 * Filters: Use this property to add filters to all endpoints. Only the ProducesResponseType attribute is currently supported for global filters
 
-You can improve your endpoint documentation by using comments to enrich the Swagger UI. You can follow the instructions from [this](https://code-maze.com/swagger-ui-asp-net-core-web-api/) blog to implement cooment support. 
+You can improve your endpoint documentation by using comments to enrich the Swagger UI. You can follow the instructions from [this](https://code-maze.com/swagger-ui-asp-net-core-web-api/) blog to implement cooment support. MinimalEndpoints uses a custom attribute [HandlerMethod] to identify
+the actual method that contains the API logic. This attribute is on abstract method on the base classes so you do not need to add it to the endpoint method on inherited classes, however, you need to a it to the endpoint method of classes that directly implements the IEndpoint interface.
 
 
 
@@ -347,9 +348,78 @@ public class UpdateTodoItem : IEndpoint
 
 You can also use the ProducesResponseType attribute to provide details of the various HTTP codes return from your endpoint.
 
+### Streaming data with Endpoints?
+
+You can enable streaming response from your endpoint using two approaches:
+* Directly returning IAsyncEnumerable<T>
+* returning StreamResult<T> 
+
+Only requirement is that your data layer return an IAsyncEnumerable<T> and then you are able to use either of the two approaches to stream data from your endpoint.
+
+```csharp
+//...
+[HandlerMethod]
+public async IAsyncEnumerable<TodoItem> SendAsync()
+{
+    await foreach (var item in _repository.GetAllAsyncStream())
+    {
+        yield return item;
+    }
+}
+
+//..
+[HandlerMethod]
+public IResult SendAsync()
+{
+    return new StreamResult<TodoItem>(_repository.GetAllAsyncStream());
+}
+```
+
 ### How do I enable CORS with MinimalEndpoints?
 
 You can simply add the EnableCors attribute to your endpoint and add the CORS middleware during your application startup.
+
+
+### How do I enable Rate Limiting with MinimalEndpoints?
+
+First you need to setup rate limiting feature in the app startup and add one or more policies and then you assign the policy to the endpoint attribute
+on the endpoint class.
+
+```csharp
+//...
+builder.Services.AddRateLimiter(_ => _
+    .AddFixedWindowLimiter(policyName: "fixed", options =>
+    {
+        options.PermitLimit = 4;
+        options.Window = TimeSpan.FromSeconds(12);
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 2;
+    }));
+
+//...
+app.UseRateLimiter();
+
+//...
+[Endpoint(TagName = "Todo", OperationId = nameof(GetAllTodoItems), RateLimitingPolicyName = "fixed")]
+public class GetAllTodoItems : IEndpoint
+{
+    private readonly ITodoRepository _repository;
+
+    public GetAllTodoItems(ITodoRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public string Pattern => "/todos";
+
+    public HttpMethod Method => HttpMethod.Get;
+
+    public Delegate Handler => SendAsync;
+   //...
+}
+
+```
+
 
 ### Setting route prefix?
 
@@ -522,3 +592,6 @@ response.Headers.Location = uri;
 await response.SendAsync(model, StatusCodes.Status201Created)
 
 ```
+
+### Rate Limiting support
+

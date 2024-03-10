@@ -133,10 +133,20 @@ public static class EndpointRouteBuilderExtensions
 
             if (!string.IsNullOrWhiteSpace(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
 
+            if (!string.IsNullOrWhiteSpace(tagAttr.Description)) mapping.WithDescription(tagAttr.Description);
+
             if (!string.IsNullOrWhiteSpace(tagAttr.GroupName))
                 mapping.WithGroupName(tagAttr.GroupName);
             else if (serviceConfig.DefaultGroupName is { })
                 mapping.WithGroupName(serviceConfig.DefaultGroupName);
+
+            if (tagAttr.RateLimitingPolicyName is { } || tagAttr.DisableRateLimiting is { })
+            {
+                if (!string.IsNullOrWhiteSpace(tagAttr.RateLimitingPolicyName))
+                    mapping.RequireRateLimiting(tagAttr.RateLimitingPolicyName);
+                else if (tagAttr.DisableRateLimiting)
+                    mapping.DisableRateLimiting();
+            }
         }
 
         return builder;

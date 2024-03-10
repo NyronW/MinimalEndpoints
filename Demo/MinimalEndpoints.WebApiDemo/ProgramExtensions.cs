@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MinimalEndpoints.WebApiDemo.Authorization;
 using MinimalEndpoints.WebApiDemo.Endpoints;
 using MinimalEndpoints.WebApiDemo.Services;
-using System.Reflection;
+using MinimalEndpoints.Swashbuckle.AspNetCore;
 using System.Text;
+using System.Threading.RateLimiting;
 
 namespace MinimalEndpoints.WebApiDemo;
 
@@ -73,13 +75,13 @@ public static class ProgramExtensions
             var xmlFiles = Directory.GetFiles(AppContext.BaseDirectory)
                 .Where(f => Path.GetExtension(f) == ".xml");
 
-            foreach (var xmlFile in xmlFiles)
-                c.IncludeXmlComments(xmlFile);
+            //foreach (var xmlFile in xmlFiles)
+            //    c.IncludeXmlComments(xmlFile);
 
             var descriptors = builder.Services.BuildServiceProvider()
                 .GetRequiredService<EndpointDescriptors>();
 
-            //c.IncludeXmlComments(xmlFiles, descriptors);
+            c.IncludeXmlComments(xmlFiles, descriptors);
 
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
@@ -128,6 +130,15 @@ public static class ProgramExtensions
             });
         });
 
+        builder.Services.AddRateLimiter(_ => _
+            .AddFixedWindowLimiter(policyName: "fixed", options =>
+            {
+                options.PermitLimit = 4;
+                options.Window = TimeSpan.FromSeconds(12);
+                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                options.QueueLimit = 2;
+            }));
+
         return builder;
     }
 
@@ -139,6 +150,8 @@ public static class ProgramExtensions
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "Minimal Endpoint API Demo");
             options.SwaggerEndpoint("/swagger/v2/swagger.json", "Minimal Endpoint API Demo (V2)");
         });
+
+        app.UseRateLimiter();
 
         app.UseHttpsRedirection();
 
