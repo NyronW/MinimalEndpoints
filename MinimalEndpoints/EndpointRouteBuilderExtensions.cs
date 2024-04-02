@@ -69,12 +69,11 @@ public static class EndpointRouteBuilderExtensions
             var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
                     .Select(p => p.ParameterType.FullName!.Replace("+", ".")));
             var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
-            endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodName));
+            endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName));
 
             var mapping = builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
 
-            var globalProduces = serviceConfig.Filters.Where(f => f is ProducesResponseTypeAttribute)
-                .Cast<ProducesResponseTypeAttribute>();
+            var globalProduces = serviceConfig.Filters.OfType<ProducesResponseTypeAttribute>();
 
             var producesRespAttributes = ((ProducesResponseTypeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(ProducesResponseTypeAttribute)))
                     .ToList();

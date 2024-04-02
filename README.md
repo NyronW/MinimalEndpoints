@@ -295,6 +295,9 @@ Your endpoints will be visible via Swagger with no extra effort, however you can
 * ExcludeFromDescription: Set this property to true if you want don't want to list your endpoint on the Swagger UI page
 * RoutePrefixOverride: This property is used to override the default route prefix, if it was configured at startup.
 * Filters: Use this property to add filters to all endpoints. Only the ProducesResponseType attribute is currently supported for global filters
+* RateLimitingPolicyName:  This property is used to assign a rate limiting policy to an endpoint. The policy must be configured in the app startup.
+
+```csharp
 
 You can improve your endpoint documentation by using comments to enrich the Swagger UI. You can follow the instructions from [this](https://code-maze.com/swagger-ui-asp-net-core-web-api/) blog to implement cooment support. MinimalEndpoints uses a custom attribute [HandlerMethod] to identify
 the actual method that contains the API logic. This attribute is on abstract method on the base classes so you do not need to add it to the endpoint method on inherited classes, however, you need to a it to the endpoint method of classes that directly implements the IEndpoint interface.
@@ -329,6 +332,7 @@ public class UpdateTodoItem : IEndpoint
     /// <response code="400">Invalid data passed from client</response>
     /// <response code="404">Item not found</response>
     /// <response code="500">Internal server error occured</response>
+    [HandlerMethod]
     private async Task<IResult> UpdateAsync(string id, TodoItem todo)
     {
         if (todo == null || !todo.completed.HasValue)
@@ -346,7 +350,13 @@ public class UpdateTodoItem : IEndpoint
 
 ```
 
-You can also use the ProducesResponseType attribute to provide details of the various HTTP codes return from your endpoint.
+You can also use the ProducesResponseType and AcceptAttribute attribute to provide details of the various HTTP codes return from your endpoint. You can also use the [FromRoute],[FromHeader] or [FromQuery] attribute to provide details of the route parameters.
+
+It is recommended to add the [MinimalEndpoints.Swashbuckle.AspNetCore](https://www.nuget.org/packages/MinimalEndpoints.Swashbuckle.AspNetCore) package to your project to enhance Swagger UI integration. This package is a wrapper around the Swashbuckle.AspNetCore package and provides a more streamlined way to configure Swagger for your MinimalEndpoints application.
+
+```csharp
+
+```csharp]
 
 ### Streaming data with Endpoints?
 
@@ -374,6 +384,7 @@ public IResult SendAsync()
     return new StreamResult<TodoItem>(_repository.GetAllAsyncStream());
 }
 ```
+
 
 ### How do I enable CORS with MinimalEndpoints?
 
@@ -593,5 +604,35 @@ await response.SendAsync(model, StatusCodes.Status201Created)
 
 ```
 
-### Rate Limiting support
+### Asynchronous Streaming Support
+Simply return a StreamResult<T> from your endpoint to enable streaming support. MinimalEndpoints will automatically handle the streaming of data to the client or  you can return an IAsyncEnumerable<T> from your endpoint method.
+
+
+```csharp
+
+    [HandlerMethod]
+    public IResult SendAsync()
+    {
+        return new StreamResult<TodoItem>(_repository.GetAllAsyncStream());
+    }
+
+    //..OR 
+
+    [HandlerMethod]
+    public async IAsyncEnumerable<TodoItem> SendAsync()
+    {
+        await foreach (var item in _repository.GetAllAsyncStream())
+        {
+            yield return item;
+        }
+    }
+
+```
+
+### V1.2 Breaking Changes
+Update abstract method definition to accept a CancellationToken parameter to the following classes. This change is to allow for better cancellation support in the application.
+ * Endpoint<TRequest, TResponse>
+ * GetByIdEndpoint<TResponse>
+ * Endpoint<TResponse>
+ * GetByIdEndpoint<TResponse, TKey>
 

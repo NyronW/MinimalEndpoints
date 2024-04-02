@@ -22,16 +22,18 @@ public class GetAllCustomers : EndpointBase, IEndpoint
 
     public HttpMethod Method => HttpMethod.Get;
 
+    public Delegate Handler => GetCustomers;
+
     /// <summary>
     /// Get all available customers
     /// </summary>
-    /// <returns></returns>
-    public Delegate Handler => GetCustomers;
-
-
+    /// <param name="pageNo">Page number</param>
+    /// <param name="pageSize">Page size</param>
+    /// <returns>All customers</returns>
+    [HandlerMethod]
     private IResult GetCustomers([FromQuery] int pageNo, [FromQuery] int pageSize = 10)
     {
-        var customers = _customerRepository.GetAll();
+        var customers = _customerRepository.GetAll().Skip((pageNo - 1) * pageSize).Take(pageSize);
 
         _someService.Foo();
 

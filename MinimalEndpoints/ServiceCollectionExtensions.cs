@@ -76,7 +76,11 @@ public static class ServiceCollectionExtensions
     {
         var descriptions = new EndpointDescriptors();
 
-        services.AddSingleton(descriptions);
+        services.AddSingleton(sp =>
+        {
+            descriptions.ServiceProvider = sp;
+            return descriptions;
+        });
 
         services.AddSingleton<EndpointHandler>();
 

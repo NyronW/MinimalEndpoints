@@ -15,7 +15,7 @@ public interface ITodoRepository
 
 public class TodoRepository : ITodoRepository
 {
-    private readonly Dictionary<string, TodoItem> items = new Dictionary<string, TodoItem>
+    private readonly Dictionary<string, TodoItem> items = new()
     {
         ["1"] = new TodoItem("1", "Buy groceries", true),
         ["2"] = new TodoItem("2", "Call Mom", true),

@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions.Http;
 using System.Collections.Concurrent;
@@ -11,7 +13,7 @@ public class EndpointHandler
     private readonly ILogger<EndpointHandler> _logger;
     private readonly Func<IEndpoint, IServiceProvider, ILoggerFactory, HttpRequest, CancellationToken, Task<object?>> _handler;
 
-    public EndpointHandler(ILogger<EndpointHandler> logger )
+    public EndpointHandler(ILogger<EndpointHandler> logger)
     {
         _handler = CreateHandler();
         _logger = logger;
@@ -47,7 +49,7 @@ public class EndpointHandler
 
                     if (isOverridden)
                     {
-                        value = await (ValueTask<object>)BindAsync.Invoke(ep, new object[] { request, cancellationToken })!;
+                        value = await (ValueTask<object>)BindAsync.Invoke(ep, [request, cancellationToken])!;
                     }
                     else if (param.ParameterType == typeof(IFormFile) || param.ParameterType == typeof(IFormFileCollection))
                     {
@@ -62,14 +64,29 @@ public class EndpointHandler
                     {
                         value = request;
                     }
+                    else if (param.ParameterType == typeof(CancellationToken))
+                    {
+                        value = cancellationToken;
+                    }
+                    else if (param.GetCustomAttribute<FromServicesAttribute>() != null)
+                    {
+                        value = sp.GetRequiredService(param.ParameterType);
+                    }
                     else
                     {
-                        string stringValue = request.RouteValues[param.Name]?.ToString()! ??
-                                             request.Query[param.Name].FirstOrDefault()! ??
-                                             request.Headers[param.Name].FirstOrDefault()!;
+                        if (param.ParameterType.IsPrimitive || param.ParameterType == typeof(string))
+                        {
+                            string stringValue = request.RouteValues[param.Name]?.ToString()! ??
+                                                 request.Query[param.Name].FirstOrDefault()! ??
+                                                 request.Headers[param.Name].FirstOrDefault()!;
 
-                        if (!string.IsNullOrEmpty(stringValue))
-                            value = ConvertParameter(stringValue, param.ParameterType);
+                            if (!string.IsNullOrEmpty(stringValue))
+                                value = ConvertParameter(stringValue, param.ParameterType);
+                        }
+                        else
+                        {
+                            value = sp.GetRequiredService(param.ParameterType); ;
+                        }
                     }
 
                     if (value == null && param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)

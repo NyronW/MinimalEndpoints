@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MinimalEndpoints.Extensions.Http;
 
 namespace MinimalEndpoints;
 
@@ -10,19 +11,29 @@ public abstract class EndpointBase
         return Results.Ok();
     }
 
+    public virtual IResult Ok(object? value)
+    {
+        return Results.Extensions.Ok(value);
+    }
+
     public virtual IResult Ok<T>(T value)
     {
-        return Results.Ok(value);
+        return Results.Extensions.Ok(value);
+    }
+
+    public virtual IResult Created(string uri, object? value)
+    {
+        return Results.Extensions.Created(uri, value);
     }
 
     public virtual IResult Created<T>(string url, T value)
     {
-        return Results.Created(url, value);
+        return Results.Extensions.Created(url, value);
     }
 
     public virtual IResult CreatedAtRoute(string routeName, object? routeValues = null, object? value = null)
     {
-        return Results.CreatedAtRoute(routeName, routeValues, value);
+        return Results.Extensions.CreatedAtRoute(routeName, routeValues, value);
     }
 
     public virtual IResult NoContent()
@@ -72,7 +83,15 @@ public abstract class EndpointBase
 
     public virtual IResult BadRequest<T>(T error)
     {
-        return Results.BadRequest(error);
+        return Results.Extensions.BadRequest(error);
+    }
+
+    public virtual IResult BadRequest(HttpValidationProblemDetails problem)
+        => BadRequest(problem, "application/problem+");
+
+    public virtual IResult BadRequest(object? error, string? contentType)
+    {
+        return Results.Extensions.BadRequest(error, contentType);
     }
 
     public virtual IResult BadRequest(ValidationProblemDetails problemDetails)
@@ -83,19 +102,37 @@ public abstract class EndpointBase
             type: problemDetails.Type, extensions: problemDetails.Extensions);
     }
 
-    protected IResult InternalServerError(string error)
+    public virtual IResult Problem(ProblemDetails problem) => InternalServerError(problem, "application/problem+");
+
+    public virtual IResult InternalServerError(object? error, string? contentType)
     {
-        return Results.Problem(error, statusCode: StatusCodes.Status500InternalServerError);
+        return Results.Extensions.InternalServerError(error, contentType);
     }
 
-    protected IResult InternalServerError<TProblem>(TProblem problem) where TProblem : ProblemDetails
+    public virtual IResult InternalServerError(string error)
     {
-        return Results.Problem(problem);
+        var pd = new ProblemDetails
+        {
+            Title = "An internal server error occurred.",
+            Detail = error,
+            Status = StatusCodes.Status500InternalServerError
+        };
+        return Results.Extensions.Problem(pd);
+    }
+
+    public virtual IResult InternalServerError<TProblem>(TProblem problem) where TProblem : ProblemDetails
+    {
+        return Results.Extensions.Problem(problem);
     }
 
     public virtual IResult NotFound()
     {
         return Results.NotFound();
+    }
+
+    public virtual IResult NotFound(object? value)
+    {
+        return Results.Extensions.NotFound(value);
     }
 
     public virtual IResult NotFound<T>(T value)

@@ -52,7 +52,8 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
     /// </remarks>
     /// <response code="200">Returns the customer for specified id</response>
     /// <response code="404">Customer not found</response>
-    public override Task<Customer> SendAsync(int id)
+    [HandlerMethod]
+    public override Task<Customer> SendAsync(int id, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_customerRepository.GetById(id));
     }

@@ -72,7 +72,7 @@ public class Endpoint : Endpoint<Request, Response>
 
     public override HttpMethod Method =>  HttpMethod.Post;
 
-    public override async Task<Response> SendAsync(Request request)
+    public override async Task<Response> SendAsync(Request request, CancellationToken cancellationToken = default)
     {
         await _validator.ValidateAsync(request);
 

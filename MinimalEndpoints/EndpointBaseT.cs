@@ -12,9 +12,11 @@ using MinimalEndpoints.Extensions.Validation;
 
 namespace MinimalEndpoints;
 
-public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
+public abstract class EndpointBase<TRequest, TResponse> : EndpointBase, IEndpoint
 {
     protected readonly ILogger _logger;
+
+    private HttpRequest _httpRequest = null!;
 
     protected EndpointBase(ILoggerFactory loggerFactory)
     {
@@ -24,6 +26,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
     public abstract string Pattern { get; }
     public abstract HttpMethod Method { get; }
 
+
     [HandlerMethod]
     public abstract Task<IResult> HandleRequestAsync(TRequest request, HttpRequest httpRequest, CancellationToken cancellationToken = default);
 
@@ -31,8 +34,10 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
 
     protected virtual async Task<IResult> HandlerCore(HttpRequest httpRequest, CancellationToken cancellationToken = default)
     {
-        var correlationIdHeader = httpRequest.Headers["X-CorrelationId"];
-        var correlationId = StringValues.IsNullOrEmpty(correlationIdHeader) ? Guid.NewGuid().ToString() : correlationIdHeader.ToString();
+        _httpRequest = httpRequest;
+
+        var correlationIdHeader = GetHeaderValue<string>("X-CorrelationId");
+        var correlationId = StringValues.IsNullOrEmpty(correlationIdHeader) ? Guid.NewGuid().ToString() : correlationIdHeader;
         httpRequest.HttpContext.Response.Headers["X-CorrelationId"] = correlationId;
 
         using (_logger.AddContext("CorrelationId", correlationId))
@@ -44,7 +49,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
 
                 var validationErrors = await ValidateAsync(request!);
 
-                if (validationErrors.Count() > 0)
+                if (validationErrors.Any())
                 {
                     _logger.LogDebug("One or more validation errors occured");
 
@@ -75,7 +80,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
             }
             catch (EndpointModelBindingException ex)
             {
-                _logger.LogError(ex,$"Unhandled exception occured while attempting to bind data");
+                _logger.LogError(ex, $"Unhandled exception occured while attempting to bind data");
 
                 var exceptionDetails = (IHaveValidationProblemDetails)ex;
 
@@ -99,7 +104,7 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
                 //throw error if in development environment
                 if (env!.IsDevelopment()) throw;
 
-                IHaveProblemDetails? exceptionDetails = e is IHaveProblemDetails ? (IHaveProblemDetails)e : null;
+                IHaveProblemDetails? exceptionDetails = e is IHaveProblemDetails details ? details : null;
 
                 var problem = new ProblemDetails
                 {
@@ -122,38 +127,42 @@ public abstract class EndpointBase<TRequest, TResponse> : IEndpoint
         return Task.FromResult(errors.AsEnumerable());
     }
 
-    protected IResult Ok(object? value)
+    protected TValue? GetRouteValue<TValue>(string name)
     {
-        return Results.Extensions.Ok(value);
+        if (_httpRequest.RouteValues.TryGetValue(name, out var value) && value is TValue typedValue)
+        {
+            return typedValue;
+        }
+        return default;
     }
 
-    protected IResult Created(string uri, object? value)
+    protected TValue? GetQueryStringValue<TValue>(string name)
     {
-        return Results.Extensions.Created(uri, value);
+        if (_httpRequest.Query.TryGetValue(name, out var values) && values.Count > 0)
+        {
+            var value = values[0];
+            return (TValue?)Convert.ChangeType(value, typeof(TValue));
+        }
+        return default;
     }
 
-    protected IResult CreatedAtRoute(string routeName, object? routeValues = null, object? value = null)
+    protected TValue? GetHeaderValue<TValue>(string name)
     {
-        return Results.Extensions.CreatedAtRoute(routeName, routeValues, value);
+        if (_httpRequest.Headers.TryGetValue(name, out var values) && values.Count > 0)
+        {
+            var value = values[0];
+            return (TValue?)Convert.ChangeType(value, typeof(TValue));
+        }
+        return default;
     }
 
-    protected IResult BadRequest(HttpValidationProblemDetails problem)
-        => BadRequest(problem, "application/problem+");
-
-    protected IResult BadRequest(object? error, string? contentType)
+    protected TValue? GetFormValue<TValue>(string name)
     {
-        return Results.Extensions.BadRequest(error, contentType);
-    }
-
-    protected IResult Problem(ProblemDetails problem) => InternalServerError(problem, "application/problem+");
-
-    protected IResult InternalServerError(object? error, string? contentType)
-    {
-        return Results.Extensions.InternalServerError(error, contentType);
-    }
-
-    protected IResult NotFound(object? value)
-    {
-        return Results.Extensions.NotFound(value);
+        if (_httpRequest.HasFormContentType && _httpRequest.Form.TryGetValue(name, out var values) && values.Count > 0)
+        {
+            var value = values[0];
+            return (TValue?)Convert.ChangeType(value, typeof(TValue));
+        }
+        return default;
     }
 }
