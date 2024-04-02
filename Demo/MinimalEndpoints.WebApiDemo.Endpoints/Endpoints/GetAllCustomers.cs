@@ -29,9 +29,10 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     /// </summary>
     /// <param name="pageNo">Page number</param>
     /// <param name="pageSize">Page size</param>
+    /// <param name="customer"></param>
     /// <returns>All customers</returns>
     [HandlerMethod]
-    private IResult GetCustomers([FromQuery] int pageNo, [FromQuery] int pageSize = 10)
+    private IResult GetCustomers([FromQuery] int pageNo, [FromQuery] int pageSize)
     {
         var customers = _customerRepository.GetAll().Skip((pageNo - 1) * pageSize).Take(pageSize);
 

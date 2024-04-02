@@ -11,7 +11,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(Customer))]
     [Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = new[] { "application/xml" })]
     [Endpoint(TagName = "Customer", OperationId = nameof(CreateCustomer))]
-    public class CreateCustomer : EndpointBase<CustomerDto, Customer>
+    public class CreateCustomer : EndpointBase, IEndpoint
     {
         private readonly ICustomerRepository _repository;
 
@@ -20,21 +20,23 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
         /// </summary>
         /// <param name="loggerFactory"></param>
         /// <param name="repository"></param>
-        public CreateCustomer(ILoggerFactory loggerFactory, ICustomerRepository repository) : base(loggerFactory)
+        public CreateCustomer(ILoggerFactory loggerFactory, ICustomerRepository repository)
         {
             _repository = repository;
         }
 
-        public override string Pattern => "/customers";
+        public string Pattern => "/customers";
 
-        public override HttpMethod Method => HttpMethod.Post;
+        public HttpMethod Method => HttpMethod.Post;
+
+        public Delegate Handler => HandleRequestAsync;
 
         /// <summary>
         /// Create new customer
         /// </summary>
         /// <param name="customerDto">New customer to create</param>
         /// <returns></returns>
-        public override async Task<IResult> HandleRequestAsync(CustomerDto customerDto, HttpRequest httpRequest, CancellationToken cancellationToken = default)
+        public async Task<IResult> HandleRequestAsync(CustomerDto customerDto, HttpRequest httpRequest, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -49,7 +51,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
             }
         }
 
-        public override Task<IEnumerable<ValidationError>> ValidateAsync(CustomerDto request)
+        public Task<IEnumerable<ValidationError>> ValidateAsync(CustomerDto request)
         {
             //This check can be moved to an external validator library such as FluentValidation
 

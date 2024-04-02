@@ -13,7 +13,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-public class GetCustomerById : GetByIdEndpoint<Customer>
+public class GetCustomerById : IEndpoint
 {
     private readonly ICustomerRepository _customerRepository;
     /// <summary>
@@ -25,19 +25,22 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
         _customerRepository = customerRepository;
     }
 
-    public override string Pattern => "/customers/{id:int}";
+    public string Pattern => "/customers/{id}";
 
+    public HttpMethod Method => HttpMethod.Get;
 
-    public ValueTask<object> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
-    {
-        var routeData = request.RouteValues["id"];
+    public Delegate Handler => SendAsync;
 
-        if (routeData == null) return ValueTask.FromResult((object)0);
+    //public ValueTask<object> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
+    //{
+    //    var routeData = request.RouteValues["id"];
 
-        var id = Convert.ChangeType(routeData, typeof(int));
+    //    if (routeData == null) return ValueTask.FromResult((object)0);
 
-        return ValueTask.FromResult(id!);
-    }
+    //    var id = Convert.ChangeType(routeData, typeof(int));
+
+    //    return ValueTask.FromResult(id!);
+    //}
 
 
     /// <summary>
@@ -53,7 +56,7 @@ public class GetCustomerById : GetByIdEndpoint<Customer>
     /// <response code="200">Returns the customer for specified id</response>
     /// <response code="404">Customer not found</response>
     [HandlerMethod]
-    public override Task<Customer> SendAsync(int id, CancellationToken cancellationToken = default)
+    public Task<Customer> SendAsync([FromRoute] int id, Customer customer, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_customerRepository.GetById(id));
     }

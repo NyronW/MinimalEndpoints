@@ -74,19 +74,12 @@ public class EndpointHandler
                     }
                     else
                     {
-                        if (param.ParameterType.IsPrimitive || param.ParameterType == typeof(string))
-                        {
-                            string stringValue = request.RouteValues[param.Name]?.ToString()! ??
-                                                 request.Query[param.Name].FirstOrDefault()! ??
-                                                 request.Headers[param.Name].FirstOrDefault()!;
+                        string stringValue = request.RouteValues[param.Name]?.ToString()! ??
+                                             request.Query[param.Name].FirstOrDefault()! ??
+                                             request.Headers[param.Name].FirstOrDefault()!;
 
-                            if (!string.IsNullOrEmpty(stringValue))
-                                value = ConvertParameter(stringValue, param.ParameterType);
-                        }
-                        else
-                        {
-                            value = sp.GetRequiredService(param.ParameterType); ;
-                        }
+                        if (!string.IsNullOrEmpty(stringValue))
+                            value = ConvertParameter(stringValue, param.ParameterType);
                     }
 
                     if (value == null && param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
