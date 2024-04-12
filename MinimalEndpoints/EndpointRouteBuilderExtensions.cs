@@ -58,6 +58,8 @@ public static class EndpointRouteBuilderExtensions
 
             var methods = new[] { endpoint.Method.Method };
 
+            var routeName = tagAttr?.RouteName ?? string.Empty;
+
             // Create and add the descriptor to the collection
             MethodInfo handlerMethodInfo = endpoint.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
                                         .FirstOrDefault(m => m.GetCustomAttribute<HandlerMethodAttribute>() != null)!;
@@ -69,9 +71,14 @@ public static class EndpointRouteBuilderExtensions
             var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
                     .Select(p => p.ParameterType.FullName!.Replace("+", ".")));
             var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
-            endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName));
+            endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName, routeName!));
 
             var mapping = builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
+
+            if(!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
+            {
+                mapping.WithName(tagAttr.RouteName);
+            }
 
             var globalProduces = serviceConfig.Filters.OfType<ProducesResponseTypeAttribute>();
 

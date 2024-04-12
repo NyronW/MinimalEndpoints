@@ -296,6 +296,7 @@ Your endpoints will be visible via Swagger with no extra effort, however you can
 * RoutePrefixOverride: This property is used to override the default route prefix, if it was configured at startup.
 * Filters: Use this property to add filters to all endpoints. Only the ProducesResponseType attribute is currently supported for global filters
 * RateLimitingPolicyName:  This property is used to assign a rate limiting policy to an endpoint. The policy must be configured in the app startup.
+* RouteName:  This property is used to assign a route name to an endpoint. This value is used when creating calling Results.CreateAtRoute(string routeName, object routeValue).
 
 ```csharp
 

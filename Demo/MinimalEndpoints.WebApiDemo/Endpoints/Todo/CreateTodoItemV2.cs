@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MinimalEndpoints.Extensions.Http;
 using MinimalEndpoints.WebApiDemo.Models;
 using MinimalEndpoints.WebApiDemo.Services;
 
@@ -53,7 +54,7 @@ public class CreateTodoItemV2 : Endpoint<string, IResult>
 
         var id = await _repository.CreateAsync(description);
 
-        return Results.Created($"/endpoints/todos/{id}", new TodoItem(id, description, false));
+        return Results.CreatedAtRoute(nameof(GetTodoById), new { id }, new TodoItem(id, description, false));
     }
 }
 

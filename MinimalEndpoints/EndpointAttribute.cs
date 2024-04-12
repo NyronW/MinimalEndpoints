@@ -3,6 +3,7 @@
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public class EndpointAttribute : Attribute
 {
+    public string RouteName { get; set; } = string.Empty;
     public string? TagName { get; set; } = string.Empty;
     public string? OperationId { get; set; } = null;
     public string? GroupName { get; set; } = null;

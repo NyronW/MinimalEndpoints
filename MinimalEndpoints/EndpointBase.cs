@@ -137,7 +137,7 @@ public abstract class EndpointBase
 
     public virtual IResult NotFound<T>(T value)
     {
-        return Results.NotFound(value);
+        return Results.Extensions.NotFound(value);
     }
 
     public virtual IResult StatusCode(int statusCode)

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MinimalEndpoints.Extensions.Http;
 using MinimalEndpoints.WebApiDemo.Models;
 using MinimalEndpoints.WebApiDemo.Services;
 
@@ -11,7 +12,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-[Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItem))]
+[Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItem), RouteName = nameof(CreateTodoItem))]
 public class CreateTodoItem : Endpoint<string, IResult>
 {
     private readonly ITodoRepository _repository;
@@ -52,6 +53,6 @@ public class CreateTodoItem : Endpoint<string, IResult>
 
         var id = await _repository.CreateAsync(description);
 
-        return Results.Created($"/endpoints/todos/{id}", new TodoItem(id, description, false));
+        return Results.Extensions.CreatedAtRoute(nameof(GetTodoById), new { id }, new TodoItem(id, description, false));
     }
 }

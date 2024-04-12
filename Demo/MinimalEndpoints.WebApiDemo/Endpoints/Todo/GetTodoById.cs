@@ -7,7 +7,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TodoItem))]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-[Endpoint(TagName = "Todo", OperationId = nameof(GetTodoById))]
+[Endpoint(TagName = "Todo", OperationId = nameof(GetTodoById), RouteName = nameof(GetTodoById))]
 public class GetTodoById : Endpoint<string, TodoItem>
 {
     private readonly ITodoRepository _repository;

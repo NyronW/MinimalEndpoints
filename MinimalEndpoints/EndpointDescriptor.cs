@@ -8,8 +8,9 @@ public class EndpointDescriptor
     public string HttpMethod { get; }
     public string HandlerMethod { get; }
     public string HandlerIdentifier { get; }
+    public string RouteName { get; }
 
-    public EndpointDescriptor(string name, string className, string pattern, string httpMethod, string handlerMethod, string handlerIdentifier)
+    public EndpointDescriptor(string name, string className, string pattern, string httpMethod, string handlerMethod, string handlerIdentifier, string routeName = "")
     {
         Name = name;
         ClassName = className;
@@ -17,6 +18,7 @@ public class EndpointDescriptor
         HttpMethod = httpMethod;
         HandlerMethod = handlerMethod;
         HandlerIdentifier = handlerIdentifier;
+        RouteName = routeName;
     }
 }
 
@@ -35,6 +37,10 @@ public class EndpointDescriptors
 
     internal void Add(EndpointDescriptor descriptor)
     {
+        if (!string.IsNullOrWhiteSpace(descriptor.RouteName) &&
+                _descriptors.Any(d => d.RouteName.Equals(descriptor.RouteName, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"An endpoint with the route name '{descriptor.RouteName}' already exists.");
+
         _descriptors.Add(descriptor);
     }
 }
