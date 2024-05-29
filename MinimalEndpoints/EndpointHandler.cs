@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using MinimalEndpoints.Extensions.Http;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -71,6 +72,27 @@ public class EndpointHandler
                     else if (param.GetCustomAttribute<FromServicesAttribute>() != null)
                     {
                         value = sp.GetRequiredService(param.ParameterType);
+                    }
+                    else if (param.GetCustomAttribute<FromRouteAttribute>() is { } fromRouteAttribute)
+                    {
+                        value = request.RouteValues[fromRouteAttribute.Name ?? param.Name]!.ToString();
+
+                        if (value is { })
+                            value = ConvertParameter(value.ToString()!, param.ParameterType);
+                    }
+                    else if (param.GetCustomAttribute<FromQueryAttribute>() is { } fromQueryAttribute)
+                    {
+                        value = request.Query[fromQueryAttribute.Name ?? param.Name].FirstOrDefault();
+
+                        if (value is { })
+                            value = ConvertParameter(value.ToString()!, param.ParameterType);
+                    }
+                    else if (param.GetCustomAttribute<FromHeaderAttribute>() is { } fromHeaderAttribute)
+                    {
+                        value = request.Headers[fromHeaderAttribute.Name ?? param.Name].FirstOrDefault();
+
+                        if (value is { })
+                            value = ConvertParameter(value.ToString()!, param.ParameterType);
                     }
                     else
                     {
