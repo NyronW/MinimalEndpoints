@@ -6,14 +6,14 @@ using MinimalEndpoints.WebApiDemo.Services;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 
-[Authorize(Policy = "todo:read-write")]
-[Authorize(Policy = "todo:max-count")]
+//[Authorize(Policy = "todo:read-write")]
+//[Authorize(Policy = "todo:max-count")]
 [ProducesResponseType(StatusCodes.Status201Created)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
 [Endpoint(TagName = "Todo", OperationId = nameof(CreateTodoItem), RouteName = nameof(CreateTodoItem))]
-public class CreateTodoItem : Endpoint<string, IResult>
+public class CreateTodoItem : IEndpoint
 {
     private readonly ITodoRepository _repository;
 
@@ -22,9 +22,11 @@ public class CreateTodoItem : Endpoint<string, IResult>
         _repository = repository;
     }
 
-    public override string Pattern => "/todos";
+    public  string Pattern => "/todos";
 
-    public override HttpMethod Method => HttpMethod.Post;
+    public HttpMethod Method => HttpMethod.Post;
+
+    public Delegate Handler => SendAsync;
 
     /// <summary>
     /// Creates new todo item
@@ -44,7 +46,7 @@ public class CreateTodoItem : Endpoint<string, IResult>
     /// <response code="401">Client is not authenticated</response>
     /// <response code="403">Client is forbiden</response>
     /// <response code="500">Internal server error occured</response>
-    public override async Task<IResult> SendAsync(string description, CancellationToken cancellationToken = default)
+    public async Task<IResult> SendAsync(string description, [FromQuery] bool? foo, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(description))
         {

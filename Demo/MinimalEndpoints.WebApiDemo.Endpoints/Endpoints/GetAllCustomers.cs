@@ -30,10 +30,11 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     /// <param name="pageNo">Page number</param>
     /// <param name="pageSize">Page size</param>
     /// <param name="name">name of argument</param>
+    /// <param name="showInactive"></param>
     /// <param name="customer"></param>
     /// <returns>All customers</returns>
     [HandlerMethod]
-    private IResult GetCustomers([FromQuery] int pageNo, [FromQuery(Name ="size")] int pageSize, [FromHeader(Name ="x-foo-name")] string name)
+    private IResult GetCustomers([FromQuery] int pageNo, [FromQuery(Name ="size")] int pageSize, [FromHeader(Name ="x-foo-name")] string name, [FromQuery] bool? showInactive)
     {
         var customers = _customerRepository.GetAll().Skip((pageNo - 1) * pageSize).Take(pageSize);
 

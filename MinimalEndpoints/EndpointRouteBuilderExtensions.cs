@@ -69,7 +69,7 @@ public static class EndpointRouteBuilderExtensions
             }
 
             var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
-                    .Select(p => p.ParameterType.FullName!.Replace("+", ".")));
+                    .Select(p => GetParameterTypeName(p.ParameterType)));
             var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
             endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName, routeName!));
 
@@ -156,5 +156,19 @@ public static class EndpointRouteBuilderExtensions
         }
 
         return builder;
+    }
+
+    private static string GetParameterTypeName(Type type)
+    {
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+        {
+            Type underlyingType = Nullable.GetUnderlyingType(type)!;
+            return $"System.Nullable{{{underlyingType.FullName.Replace("+", ".")}}}";
+        }
+        else
+        {
+            // Handle non-generic types
+            return type.FullName!.Replace("+", ".");
+        }
     }
 }
