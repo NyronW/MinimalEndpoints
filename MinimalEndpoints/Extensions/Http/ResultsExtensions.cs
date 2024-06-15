@@ -28,4 +28,10 @@ public static class ResultsExtensions
 
     public static IResult InternalServerError(this IResultExtensions _, object? value, string? contentType = null)
             => new InternalServerErrorNegotiatedResult(value);
+
+    public static IResult UnAuthorized(this IResultExtensions _, object? value, string? contentType = null)
+        => new UnAuthorizedNegotiatedResult(value);
+
+    public static IResult Forbidden(this IResultExtensions _, object? value, string? contentType = null)
+    => new ForbiddenNegotiatedResult(value);
 }

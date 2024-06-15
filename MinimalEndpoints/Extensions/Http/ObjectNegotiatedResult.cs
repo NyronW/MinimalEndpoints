@@ -21,37 +21,31 @@ public class ObjectNegotiatedResult : IResult
     }
 }
 
-public sealed class OkNegotiatedResult : ObjectNegotiatedResult
+public sealed class OkNegotiatedResult(object? value) : ObjectNegotiatedResult(StatusCodes.Status200OK, value, null)
 {
-    public OkNegotiatedResult(object? value) : base(StatusCodes.Status200OK, value, null)
-    {
-
-    }
 }
 
-public sealed class NotFoundNegotiatedResult : ObjectNegotiatedResult
+public sealed class NotFoundNegotiatedResult(object? value) : ObjectNegotiatedResult(StatusCodes.Status404NotFound, value, null)
 {
-    public NotFoundNegotiatedResult(object? value) : base(StatusCodes.Status404NotFound, value, null)
-    {
-
-    }
 }
 
-public sealed class BadRequestNegotiatedResult : ObjectNegotiatedResult
+public sealed class BadRequestNegotiatedResult(object? error, string? contentType = null) 
+    : ObjectNegotiatedResult(StatusCodes.Status400BadRequest, error, contentType)
 {
-    public BadRequestNegotiatedResult(object? error, string? contentType = null)
-        : base(StatusCodes.Status400BadRequest, error, contentType)
-    {
-
-    }
 }
 
-public sealed class InternalServerErrorNegotiatedResult : ObjectNegotiatedResult
+public sealed class InternalServerErrorNegotiatedResult(object? error, string? contentType = null) 
+    : ObjectNegotiatedResult(StatusCodes.Status500InternalServerError, error, contentType)
 {
-    public InternalServerErrorNegotiatedResult(object? error, string? contentType = null)
-        : base(StatusCodes.Status500InternalServerError, error, contentType)
-    {
+}
 
-    }
+public sealed class UnAuthorizedNegotiatedResult(object? error, string? contentType = null) 
+    : ObjectNegotiatedResult(StatusCodes.Status401Unauthorized, error, contentType)
+{
+}
+
+public sealed class ForbiddenNegotiatedResult(object? error, string? contentType = null)
+    : ObjectNegotiatedResult(StatusCodes.Status403Forbidden, error, contentType)
+{
 }
 
