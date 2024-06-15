@@ -13,10 +13,12 @@
     <PackageTags>ASP.NET; Minimal API; Endpoint; REPR; C#; .NET</PackageTags>
     <Version>1.2.7</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Update="LICENSE.txt" Pack="true" PackagePath="\" />
   </ItemGroup>
   
   <ItemGroup>
