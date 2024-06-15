@@ -15,7 +15,23 @@ public static class ServiceCollectionExtensions
     /// <param name="services"></param>
     /// <returns></returns>
     public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
-        => services.AddMinimalEndpoints(new List<Assembly>());
+        => services.AddMinimalEndpoints([], scanAssemblies: true);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="services"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool scanAssemblies)
+        => services.AddMinimalEndpoints([], scanAssemblies: scanAssemblies);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="services"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddMinimalEndpointFromCallingAssembly(this IServiceCollection services)
+        => services.AddMinimalEndpoints([], entryAssembly: Assembly.GetCallingAssembly(), scanAssemblies: false);
     /// <summary>
     /// Registers endpoint from assemblies that contain specified types
     /// </summary>
@@ -39,22 +55,26 @@ public static class ServiceCollectionExtensions
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, IEnumerable<Assembly> assemblies)
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, IEnumerable<Assembly> assemblies, Assembly entryAssembly = null!, bool scanAssemblies = true)
     {
         if (assemblies == null || !assemblies.Any())
         {
-            assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            if (scanAssemblies)
+                assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            else if (entryAssembly is { })
+                assemblies = [entryAssembly];
         }
 
-        assemblies = assemblies.Distinct().ToArray();
+        assemblies = assemblies?.Distinct().ToArray() ?? [];
 
         var interfaceTypes = new[] { typeof(IEndpoint) };
 
         foreach (var assembly in assemblies)
         {
-            foreach (var type in assembly.GetExportedTypes().Where(a => !a.IsAbstract))
+            foreach (var type in assembly.GetTypes().Where(a => typeof(IEndpoint).IsAssignableFrom(a) && !a.IsAbstract))
             {
-                if (!interfaceTypes.Any(t => t.IsAssignableFrom(type))) continue;
+                var registered = services.Any(sd => sd.ServiceType == type);
+                if (registered) continue;
 
                 var interfaces = type.GetInterfaces();
                 foreach (var @interface in interfaces)
@@ -74,6 +94,12 @@ public static class ServiceCollectionExtensions
 
     private static void RegisterMinimalEndpointServices(IServiceCollection services)
     {
+        // Check if EndpointDescriptors is already registered
+        if (services.Any(sd => sd.ServiceType == typeof(EndpointDescriptors)))
+        {
+            return; // Registration already done
+        }
+
         var descriptions = new EndpointDescriptors();
 
         services.AddSingleton(sp =>

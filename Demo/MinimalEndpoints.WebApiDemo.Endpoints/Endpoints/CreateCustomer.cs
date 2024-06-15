@@ -9,9 +9,9 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
     /// Creates a new customer 
     /// </summary>
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(Customer))]
-    [Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = new[] { "application/xml" })]
+    [Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = ["application/xml"])]
     [Endpoint(TagName = "Customer", OperationId = nameof(CreateCustomer))]
-    public class CreateCustomer : EndpointBase, IEndpoint
+    internal class CreateCustomer : EndpointBase, IEndpoint
     {
         private readonly ICustomerRepository _repository;
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using MinimalEndpoints.Extensions;
 using MinimalEndpoints.Extensions.Http;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -30,7 +31,7 @@ public class EndpointHandler
         return async (endpoint, sp, loggerFactory, request, cancellationToken) =>
         {
             object? result = null!;
-
+            using var _ = _logger.AddContext("EndpointName", endpoint.GetType().FullName);
             try
             {
                 var ep = (IEndpoint)sp.GetService(endpoint.GetType())!;
@@ -46,98 +47,109 @@ public class EndpointHandler
                     object? value = null;
                     object? requestBodyObject = null!;
 
-                    var (isOverridden, BindAsync) = IsBindAsyncOverridden(ep.GetType());
+                    try
+                    {
+                        var (isOverridden, BindAsync) = IsBindAsyncOverridden(ep.GetType());
 
-                    if (isOverridden)
-                    {
-                        value = await (ValueTask<object>)BindAsync.Invoke(ep, [request, cancellationToken])!;
-                    }
-                    else if (param.ParameterType == typeof(IFormFile) || param.ParameterType == typeof(IFormFileCollection))
-                    {
-                        var files = request.ReadFormFiles(param.Name);
-                        if (files is { }) value = files is { Count: 1 } ? files[0] : (IFormFileCollection)files;
-                    }
-                    else if (param.ParameterType == typeof(HttpContext))
-                    {
-                        value = request.HttpContext;
-                    }
-                    else if (param.ParameterType == typeof(HttpRequest))
-                    {
-                        value = request;
-                    }
-                    else if (param.ParameterType == typeof(CancellationToken))
-                    {
-                        value = cancellationToken;
-                    }
-                    else if (param.GetCustomAttribute<FromServicesAttribute>() != null)
-                    {
-                        value = sp.GetRequiredService(param.ParameterType);
-                    }
-                    else if (param.GetCustomAttribute<FromRouteAttribute>() is { } fromRouteAttribute)
-                    {
-                        value = request.RouteValues[fromRouteAttribute.Name ?? param.Name]!.ToString();
-
-                        if (value is { })
-                            value = ConvertParameter(value.ToString()!, param.ParameterType);
-                    }
-                    else if (param.GetCustomAttribute<FromQueryAttribute>() is { } fromQueryAttribute)
-                    {
-                        value = request.Query[fromQueryAttribute.Name ?? param.Name].FirstOrDefault();
-
-                        if (value is { })
-                            value = ConvertParameter(value.ToString()!, param.ParameterType);
-                    }
-                    else if (param.GetCustomAttribute<FromHeaderAttribute>() is { } fromHeaderAttribute)
-                    {
-                        value = request.Headers[fromHeaderAttribute.Name ?? param.Name].FirstOrDefault();
-
-                        if (value is { })
-                            value = ConvertParameter(value.ToString()!, param.ParameterType);
-                    }
-                    else
-                    {
-                        string stringValue = request.RouteValues[param.Name]?.ToString()! ??
-                                             request.Query[param.Name].FirstOrDefault()! ??
-                                             request.Headers[param.Name].FirstOrDefault()!;
-
-                        if (!string.IsNullOrEmpty(stringValue))
-                            value = ConvertParameter(stringValue, param.ParameterType);
-                    }
-
-                    if (value == null && param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
-                    {
-                        if (param.HasDefaultValue)
+                        if (isOverridden)
                         {
-                            value = param.DefaultValue!;
+                            value = await (ValueTask<object>)BindAsync.Invoke(ep, [request, cancellationToken])!;
+                        }
+                        else if (param.ParameterType == typeof(IFormFile) || param.ParameterType == typeof(IFormFileCollection))
+                        {
+                            var files = request.ReadFormFiles(param.Name);
+                            if (files is { }) value = files is { Count: 1 } ? files[0] : (IFormFileCollection)files;
+                        }
+                        else if (param.ParameterType == typeof(HttpContext))
+                        {
+                            value = request.HttpContext;
+                        }
+                        else if (param.ParameterType == typeof(HttpRequest))
+                        {
+                            value = request;
+                        }
+                        else if (param.ParameterType == typeof(CancellationToken))
+                        {
+                            value = cancellationToken;
+                        }
+                        else if (param.GetCustomAttribute<FromServicesAttribute>() != null)
+                        {
+                            value = sp.GetRequiredService(param.ParameterType);
+                        }
+                        else if (param.GetCustomAttribute<FromRouteAttribute>() is { } fromRouteAttribute)
+                        {
+                            value = request.RouteValues[fromRouteAttribute.Name ?? param.Name]?.ToString();
+
+                            if (value is { })
+                                value = ConvertParameter(value.ToString()!, param.ParameterType);
+                        }
+                        else if (param.GetCustomAttribute<FromQueryAttribute>() is { } fromQueryAttribute)
+                        {
+                            value = request.Query[fromQueryAttribute.Name ?? param.Name].FirstOrDefault();
+
+                            if (value is { })
+                                value = ConvertParameter(value.ToString()!, param.ParameterType);
+                        }
+                        else if (param.GetCustomAttribute<FromHeaderAttribute>() is { } fromHeaderAttribute)
+                        {
+                            value = request.Headers[fromHeaderAttribute.Name ?? param.Name].FirstOrDefault();
+
+                            if (value is { })
+                                value = ConvertParameter(value.ToString()!, param.ParameterType);
                         }
                         else
                         {
-                            _logger.LogDebug("The value for parameter '{ParameterName}' was not found in the request and does not have a default value.", param.Name);
-                            throw new InvalidOperationException($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
-                        }
-                    }
+                            string stringValue = request.RouteValues[param.Name]?.ToString()! ??
+                                                 request.Query[param.Name].FirstOrDefault()! ??
+                                                 request.Headers[param.Name].FirstOrDefault()!;
 
-                    if (value == null && (!param.ParameterType.IsValueType || Nullable.GetUnderlyingType(param.ParameterType) != null))
-                    {
-                        if (requestBodyObject == null && request is { ContentLength: > 0, ContentType.Length: > 0 })
+                            if (!string.IsNullOrEmpty(stringValue))
+                                value = ConvertParameter(stringValue, param.ParameterType);
+                        }
+
+                        if (value == null && param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
                         {
-                            if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                            if (param.HasDefaultValue)
                             {
-                                requestBodyObject = await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken);
+                                value = param.DefaultValue!;
                             }
-                            else if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+                            else
                             {
-                                requestBodyObject = await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken);
+                                _logger.LogDebug("The value for parameter '{ParameterName}' was not found in the request and does not have a default value.", param.Name);
+                                throw new InvalidOperationException($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
                             }
                         }
-                        else
-                            _logger.LogDebug("No data was found the request body or content type '{ContentType}' is not supported", request.ContentType);
 
-                        value = requestBodyObject ?? (param.HasDefaultValue ? param.DefaultValue : null);
+                        if (value == null && (!param.ParameterType.IsValueType || Nullable.GetUnderlyingType(param.ParameterType) != null))
+                        {
+                            if (requestBodyObject == null && request is { ContentLength: > 0, ContentType.Length: > 0 })
+                            {
+                                if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    requestBodyObject = await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken);
+                                }
+                                else if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    requestBodyObject = await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken);
+                                }
+                            }
+                            else
+                                _logger.LogDebug("No data was found the request body or content type '{ContentType}' is not supported", request.ContentType);
+
+                            value = requestBodyObject ?? (param.HasDefaultValue ? param.DefaultValue : null);
+                        }
                     }
-
-                    args[i] = value!;
+                    catch (Exception pex)
+                    {
+                        _logger.LogError(pex, "An error occured while trying to bind value for parameter: {EndpointArg}", param.Name);
+                    }
+                    finally
+                    {
+                        args[i] = value!;
+                    }
                 }
+
+                _logger.LogDebug("Endpoint argumment binding completed, i23nvoking handler method");
 
                 // Invoke the delegate with the dynamically bound parameters
                 if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
@@ -215,6 +227,8 @@ public class EndpointHandler
         {
             throw new ArgumentNullException(nameof(methodInfo), "MethodInfo cannot be null");
         }
+
+        _logger.LogDebug("Getting method details for request endpoint");
 
         return _methodCache.GetOrAdd(methodInfo, mi =>
         {

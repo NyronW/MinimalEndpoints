@@ -19,7 +19,7 @@ public static class ProgramExtensions
     {
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
-        builder.Services.AddMinimalEndpoints(typeof(ITodoRepository).Assembly, typeof(ICustomerRepository).Assembly);
+        builder.Services.AddMinimalEndpoints();
 
         builder.Services.AddCustomerServices(); //Add services for support class library
 

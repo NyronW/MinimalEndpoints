@@ -637,3 +637,8 @@ Update abstract method definition to accept a CancellationToken parameter to the
  * Endpoint<TResponse>
  * GetByIdEndpoint<TResponse, TKey>
 
+### V1.2.7 Changes
+ * Added new registration argument to enable/disabled perform a scan of all loaded assemblies
+ * Added new registration method called AddMinimalEndpointFromCallingAssembly that only scans the calling assembly for endpoints. This enable better encapsulation of endpoints located in class libraries.
+ * Support added to register all endpoints regardless of it's access modifiers. This enable better encapsulation of endpoints located in class libraries
+
