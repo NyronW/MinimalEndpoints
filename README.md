@@ -228,6 +228,12 @@ app.UseMinimalEndpoints(o =>
     o.DefaultRoutePrefix = "/api/v1";
     o.DefaultGroupName = "v1";
     o.Filters.Add(new ProducesResponseTypeAttribute(StatusCodes.Status400BadRequest));
+    o.DefaultRateLimitingPolicyName = "fixed";
+    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
+    o.AddEndpointFilter<MyCustomEndpointFilter>();
+    o.AddEndpointFilter(new MyCustomEndpointFilter2());
+    o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
+    o.AddEndpointFilter<RequestExecutionTimeFilter>();
     o.UseAuthorizationResultHandler();
 });
 
@@ -277,10 +283,10 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("todo:max-count", policyBuilder =>
     {
-	policyBuilder.AddRequirements(new ClaimsRequirement("todo:read-write2",
-	    "You do not have permission to create, update or delete todo items",
-	    allowedValues: new[] { "true" })); //custom claim configuration
-	policyBuilder.AddRequirements(new MaxTodoCountRequirement(1));
+	    policyBuilder.AddRequirements(new ClaimsRequirement("todo:read-write2",
+	        "You do not have permission to create, update or delete todo items",
+	        allowedValues: new[] { "true" })); //custom claim configuration
+	    policyBuilder.AddRequirements(new MaxTodoCountRequirement(1));
     });
 });						 
 	
@@ -630,6 +636,57 @@ Simply return a StreamResult<T> from your endpoint to enable streaming support. 
 
 ```
 
+### IEndpointFilter Support
+Simply inherit from the EndpointBase abstract class and call the AddEndpointFilter method in the implementing endpoint class or you can add global filter via the endpoint configration instance when calling the UseMinimalEndpoits method 
+from your application startup code.
+
+
+```csharp
+
+    public class UpdateTodoItem : EndpointBase, IEndpoint
+    {
+        private readonly ITodoRepository _repository;
+
+        public UpdateTodoItem(ITodoRepository repository)
+        {
+            _repository = repository;
+            AddEndpointFilter<MyCustomEndpointFilter3>();
+        }
+
+        public string Pattern => "/todos/{id}";
+
+        public HttpMethod Method => HttpMethod.Put;
+
+        public Delegate Handler => UpdateAsync;
+
+        private async Task<IResult> UpdateAsync(string id, bool completed)
+        {
+            await _repository.Update(id, completed);
+
+            return Results.Ok();
+        }
+    }
+
+
+    //..OR 
+
+        app.UseMinimalEndpoints(o =>
+        {
+            o.DefaultRoutePrefix = "/api/v1";
+            o.DefaultGroupName = "v1";
+            o.DefaultRateLimitingPolicyName = "fixed";
+            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
+            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
+            o.AddEndpointFilter<MyCustomEndpointFilter>();
+            o.AddEndpointFilter(new MyCustomEndpointFilter2());
+            o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
+            o.AddEndpointFilter<RequestExecutionTimeFilter>();
+
+            o.UseAuthorizationResultHandler();
+        });
+
+```
+
 ### V1.2 Breaking Changes
 Update abstract method definition to accept a CancellationToken parameter to the following classes. This change is to allow for better cancellation support in the application.
  * Endpoint<TRequest, TResponse>
@@ -641,4 +698,8 @@ Update abstract method definition to accept a CancellationToken parameter to the
  * Added new registration argument to enable/disabled perform a scan of all loaded assemblies
  * Added new registration method called AddMinimalEndpointFromCallingAssembly that only scans the calling assembly for endpoints. This enable better encapsulation of endpoints located in class libraries.
  * Support added to register all endpoints regardless of it's access modifiers. This enable better encapsulation of endpoints located in class libraries
+
+ ### V1.2.9 Changes
+ * Added support for IEndpointFilters
+ * Added support for applying rate limiting to all minimal endpoint implementations
 

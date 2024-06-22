@@ -1,11 +1,33 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using MinimalEndpoints.Extensions.Http;
 
 namespace MinimalEndpoints;
 
 public abstract class EndpointBase
 {
+    internal readonly EndpointFilterCollection EndpointFilters = [];
+
+    /// <summary>
+    /// Adds an endpoint filter to current minimal endpoint
+    /// </summary>
+    /// <typeparam name="TFilter"></typeparam>
+    protected void AddEndpointFilter<TFilter>() where TFilter: IEndpointFilter
+    {
+        EndpointFilters.Add(ActivatorUtilities.CreateInstance<TFilter>(EndpointRouteBuilderExtensions.ServiceProvider));
+    }
+
+    /// <summary>
+    /// Adds an endpoint filter to current minimal endpoint
+    /// </summary>
+    /// <param name="filter"></param>
+    protected void AddEndpointFilter(IEndpointFilter filter)
+    {
+        EndpointFilters.Add(filter);
+    }
+
+    #region Results
     public virtual IResult Ok()
     {
         return Results.Ok();
@@ -149,4 +171,10 @@ public abstract class EndpointBase
     {
         return Results.Unauthorized();
     }
+
+    public virtual IResult Forbidden()
+    {
+        return Results.Forbid();
+    }
+    #endregion
 }

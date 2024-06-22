@@ -10,6 +10,8 @@ using MinimalEndpoints.WebApiDemo.Services;
 using MinimalEndpoints.Swashbuckle.AspNetCore;
 using System.Text;
 using System.Threading.RateLimiting;
+using MinimalEndpoints.WebApiDemo.Endpoints.Todo;
+using MinimalEndpoints.Extensions.Http;
 
 namespace MinimalEndpoints.WebApiDemo;
 
@@ -134,7 +136,7 @@ public static class ProgramExtensions
             .AddFixedWindowLimiter(policyName: "fixed", options =>
             {
                 options.PermitLimit = 4;
-                options.Window = TimeSpan.FromSeconds(12);
+                options.Window = TimeSpan.FromSeconds(5);
                 options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 options.QueueLimit = 2;
             }));
@@ -164,10 +166,45 @@ public static class ProgramExtensions
         {
             o.DefaultRoutePrefix = "/api/v1";
             o.DefaultGroupName = "v1";
-            o.Filters.Add(new ProducesResponseTypeAttribute(StatusCodes.Status400BadRequest));
+            o.DefaultRateLimitingPolicyName = "fixed";
+            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
+            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
+            o.AddEndpointFilter<MyCustomEndpointFilter>();
+            o.AddEndpointFilter(new MyCustomEndpointFilter2());
+            o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
+            o.AddEndpointFilter<RequestExecutionTimeFilter>();
+
             o.UseAuthorizationResultHandler();
         });
 
         return app;
+    }
+}
+
+public sealed class MyCustomEndpointFilter(ILogger<MyCustomEndpointFilter> logger) : IEndpointFilter
+{
+    private readonly ILogger<MyCustomEndpointFilter> _logger = logger;
+
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        _logger.LogInformation("Before from MyCustom filter");
+        var result = await next(context);
+        _logger.LogInformation("After from MyCustom filter");
+
+        return result;
+    }
+}
+
+
+public sealed class MyCustomEndpointFilter2 : IEndpointFilter
+{
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<MyCustomEndpointFilter2>>();
+
+        logger.LogInformation("Before from MyCustom2 filter");
+        var result = await next(context);
+        logger.LogInformation("After from MyCustom2 filter");
+        return result;
     }
 }

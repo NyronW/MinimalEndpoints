@@ -1,6 +1,6 @@
 ﻿namespace MinimalEndpoints;
 
-public class EndpointDescriptor
+public sealed class EndpointDescriptor
 {
     public string Name { get; }
     public string ClassName { get; }
@@ -22,7 +22,7 @@ public class EndpointDescriptor
     }
 }
 
-public class EndpointDescriptors
+public sealed class EndpointDescriptors
 {
     private readonly List<EndpointDescriptor> _descriptors;
 

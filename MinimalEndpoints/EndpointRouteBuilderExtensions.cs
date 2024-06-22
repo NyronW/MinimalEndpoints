@@ -12,6 +12,8 @@ namespace MinimalEndpoints;
 
 public static class EndpointRouteBuilderExtensions
 {
+    internal static IServiceProvider ServiceProvider { get; set; }
+
     /// <summary>
     /// Configure Minimal endpints
     /// </summary>
@@ -28,6 +30,8 @@ public static class EndpointRouteBuilderExtensions
     /// <returns>EndpointRouteBuilder</returns>
     public static IEndpointRouteBuilder UseMinimalEndpoints(this IEndpointRouteBuilder builder, Action<EndpointConfiguration>? configuration)
     {
+        ServiceProvider = builder.ServiceProvider;
+
         using var scope = builder.ServiceProvider.CreateScope();
         var services = scope.ServiceProvider;
 
@@ -36,7 +40,11 @@ public static class EndpointRouteBuilderExtensions
         var endpoints = services.GetServices<IEndpoint>();
         if (endpoints == null) return builder;
 
-        var serviceConfig = new EndpointConfiguration();
+        var serviceConfig = new EndpointConfiguration
+        {
+            ServiceProvider = builder.ServiceProvider
+        };
+
         configuration?.Invoke(serviceConfig);
 
         var endpointHandler = services.GetRequiredService<EndpointHandler>();
@@ -75,7 +83,7 @@ public static class EndpointRouteBuilderExtensions
 
             var mapping = builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
 
-            if(!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
+            if (!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
             {
                 mapping.WithName(tagAttr.RouteName);
             }
@@ -108,6 +116,20 @@ public static class EndpointRouteBuilderExtensions
                 }
 
                 mapping.Produces(attr.StatusCode, responseType: attr.Type);
+            }
+
+            foreach (var filter in serviceConfig.EndpointFilters)
+            {
+                mapping.AddEndpointFilter(filter);
+            }
+
+            if (typeof(EndpointBase).IsAssignableFrom(endpoint.GetType()))
+            {
+                var ep = (EndpointBase)endpoint;
+                foreach (var filter in ep.EndpointFilters)
+                {
+                    mapping.AddEndpointFilter(filter);
+                }
             }
 
             var anonAttr = (AllowAnonymousAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AllowAnonymousAttribute)).FirstOrDefault();
@@ -145,6 +167,9 @@ public static class EndpointRouteBuilderExtensions
                 mapping.WithGroupName(tagAttr.GroupName);
             else if (serviceConfig.DefaultGroupName is { })
                 mapping.WithGroupName(serviceConfig.DefaultGroupName);
+
+            if(!string.IsNullOrWhiteSpace(serviceConfig.DefaultRateLimitingPolicyName))
+                mapping.RequireRateLimiting(serviceConfig.DefaultRateLimitingPolicyName);
 
             if (tagAttr.RateLimitingPolicyName is { } || tagAttr.DisableRateLimiting is { })
             {

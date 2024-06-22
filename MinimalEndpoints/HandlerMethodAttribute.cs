@@ -1,4 +1,4 @@
 ﻿namespace MinimalEndpoints;
 
 [AttributeUsage(AttributeTargets.Method)]
-public class HandlerMethodAttribute : Attribute { }
+public sealed class HandlerMethodAttribute : Attribute { }

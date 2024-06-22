@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MinimalEndpoints.WebApiDemo.Models;
 using MinimalEndpoints.WebApiDemo.Services;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
@@ -9,13 +8,14 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
 [Endpoint(TagName = "Todo", OperationId = nameof(UpdateTodoItem))]
-public class UpdateTodoItem : IEndpoint
+public class UpdateTodoItem : EndpointBase, IEndpoint
 {
     private readonly ITodoRepository _repository;
 
     public UpdateTodoItem(ITodoRepository repository)
     {
         _repository = repository;
+        AddEndpointFilter<MyCustomEndpointFilter3>();
     }
 
     public string Pattern => "/todos/{id}";
@@ -42,3 +42,13 @@ public class UpdateTodoItem : IEndpoint
     }
 }
 
+
+
+public sealed class MyCustomEndpointFilter3 : IEndpointFilter
+{
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var result = await next(context);
+        return result;
+    }
+}
