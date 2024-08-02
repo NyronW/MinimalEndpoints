@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 using MinimalEndpoints.Extensions.Http;
+using MinimalEndpoints.Authorization;
 
 namespace MinimalEndpoints.WebApiDemo;
 
@@ -123,7 +124,7 @@ public static class ProgramExtensions
         {
             options.AddPolicy("todo:read-write", policyBuilder =>
             {
-                policyBuilder.RequireClaim("todo:read-write", "true");
+                policyBuilder.RequireScope("todo:read-write", "true");
             });
 
             options.AddPolicy("todo:max-count", policyBuilder =>

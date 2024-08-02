@@ -703,3 +703,6 @@ Update abstract method definition to accept a CancellationToken parameter to the
  * Added support for IEndpointFilters
  * Added support for applying rate limiting to all minimal endpoint implementations
 
+  ### V1.3.0 Changes
+ * Added extension methods for authorization policy builber
+

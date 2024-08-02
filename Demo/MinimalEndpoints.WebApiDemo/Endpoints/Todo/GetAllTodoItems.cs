@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MinimalEndpoints.WebApiDemo.Models;
 using MinimalEndpoints.WebApiDemo.Services;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 
+[Authorize]
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<TodoItem>))]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
 [Endpoint(TagName = "Todo", OperationId = nameof(GetAllTodoItems), RateLimitingPolicyName = "fixed")]
