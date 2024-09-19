@@ -38,7 +38,7 @@ public class GetAllTodoItemsV2 : IEndpoint
     //    }
     //}
 
-    public IResult SendAsync()
+    public IResult SendAsync([FromQuery] decimal? debitAmount)
     {
         return new StreamResult<TodoItem>(_repository.GetAllAsyncStream());
     }

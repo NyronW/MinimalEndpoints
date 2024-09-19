@@ -16,7 +16,7 @@ public class GetAllCustomerTodoItems : IEndpoint
         _repository = repository;
     }
 
-    public string Pattern => "/customers/{customerId}todos";
+    public string Pattern => "/customers/{customerId}/todos";
 
     public HttpMethod Method => HttpMethod.Get;
 

@@ -31,15 +31,15 @@ public class GetCustomerById : IEndpoint
 
     public Delegate Handler => SendAsync;
 
-    //public ValueTask<object> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
+    //public async ValueTask<object[]> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
     //{
     //    var routeData = request.RouteValues["id"];
-
-    //    if (routeData == null) return ValueTask.FromResult((object)0);
+    //    await ValueTask.CompletedTask;
+    //    if (routeData == null) return [];
 
     //    var id = Convert.ChangeType(routeData, typeof(int));
 
-    //    return ValueTask.FromResult(id!);
+    //    return [id!];
     //}
 
 
@@ -56,7 +56,7 @@ public class GetCustomerById : IEndpoint
     /// <response code="200">Returns the customer for specified id</response>
     /// <response code="404">Customer not found</response>
     [HandlerMethod]
-    public Task<Customer> SendAsync([FromRoute] int id, Customer customer, CancellationToken cancellationToken = default)
+    public Task<Customer> SendAsync([FromRoute] int id, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_customerRepository.GetById(id));
     }

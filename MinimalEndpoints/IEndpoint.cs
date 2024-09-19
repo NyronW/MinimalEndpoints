@@ -8,7 +8,7 @@ public interface IEndpoint
     HttpMethod Method { get; }
     Delegate Handler { get; }
 
-    ValueTask<object> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
+    ValueTask<object[]> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)
     {
         return default!; 
     }
