@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions;
 using MinimalEndpoints.Extensions.Http;
+using System;
 using System.Collections.Concurrent;
 using System.Reflection;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MinimalEndpoints;
 
@@ -142,6 +144,10 @@ public class EndpointHandler
         if (targetType == typeof(TimeSpan) && TimeSpan.TryParse(value, out var timeSpanValue)) return timeSpanValue;
         if (targetType == typeof(DateTime) && DateTime.TryParse(value, out var dateTimeValue)) return dateTimeValue;
         if (targetType == typeof(Guid) && Guid.TryParse(value, out var guidValue)) return guidValue;
+        if (targetType == typeof(DateOnly) && DateTime.TryParse(value, out var dateOnlyValue)) 
+            return DateOnly.FromDateTime(dateOnlyValue);
+        if (targetType == typeof(TimeOnly) && DateTime.TryParse(value, out var timeOnlyValue))
+            return TimeOnly.FromDateTime(timeOnlyValue);
 
         try
         {
