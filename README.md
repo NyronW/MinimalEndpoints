@@ -68,6 +68,32 @@ public class GetAllCustomers : IEndpoint
 }
 ```
 
+Version 1.5 introduced a new interface called IEndpointDefinition that offers greater control when defining an endpoint.
+
+```csharp
+public class UpdateCustomer : IEndpointDefinition
+{
+    private IResult HandleCore(int id, CustomerDto customerDto, [FromService] ICustomerRepository repository)
+    {
+        var customer = repository.GetById(id);
+        if (customer != null)
+            customer.Name = $"{customerDto.FirstName} {customerDto.LastName}";
+
+        return Results.Ok(customer);
+    }
+
+    //Implement require method
+    public RouteHandlerBuilder MapEndpoint(IEndpointRouteBuilder app)
+    {
+        return app.MapPut("/api/v1/customers/{id}", HandleCore)
+            .WithName("UpdateCustomer")
+            .WithTags("Customer")
+            .Accepts<CustomerDto>("application/json", ["application/xml"]);
+    }
+}
+```
+The MapEndpoint method was also added to the IEndpoint interface to facilitate customizing the endpoint configuration.
+
 You can also implement the abstract base classes <em>EndpointBase</em> to access helper methods that wraps alot of the static methods on the Results class. 
 
 ```csharp

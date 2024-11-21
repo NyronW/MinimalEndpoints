@@ -67,21 +67,20 @@ public static class ServiceCollectionExtensions
 
         assemblies = assemblies?.Distinct().ToArray() ?? [];
 
-        var interfaceTypes = new[] { typeof(IEndpoint) };
+        var interfaceTypes = new[] { typeof(IEndpoint), typeof(IEndpointDefinition) };
 
         foreach (var assembly in assemblies)
         {
-            foreach (var type in assembly.GetTypes().Where(a => typeof(IEndpoint).IsAssignableFrom(a) && !a.IsAbstract))
+            foreach (var type in assembly.ExportedTypes.Where(a => !a.IsAbstract && 
+                (typeof(IEndpoint).IsAssignableFrom(a) || typeof(IEndpointDefinition).IsAssignableFrom(a))))
             {
-                var registered = services.Any(sd => sd.ServiceType == type);
+                var registered = services.Any(sd => sd.ImplementationType == type);
                 if (registered) continue;
 
                 var interfaces = type.GetInterfaces();
-                foreach (var @interface in interfaces)
+                foreach (var @interface in interfaces.Where(i => interfaceTypes.Any(t => t == i)))
                 {
-                    if (!interfaceTypes.Any(t => t == @interface)) continue;
-
-                    services.AddScoped(type);
+                    //services.AddScoped(type);
                     services.AddScoped(@interface, type);
                 }
             }

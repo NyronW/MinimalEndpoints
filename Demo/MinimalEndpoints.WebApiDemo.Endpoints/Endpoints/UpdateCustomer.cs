@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
 {
-    [Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = new[] { "application/xml" })]
-    [Endpoint(TagName ="Customer")]
-    public class UpdateCustomer : IEndpoint
+    public class UpdateCustomer : IEndpointDefinition
     {
         private readonly ICustomerRepository _repository;
 
@@ -13,21 +13,27 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
             _repository = repository;
         }
 
-        public string Pattern => "/customers/{id}";
-
-        public HttpMethod Method => HttpMethod.Put;
-
-        public Delegate Handler => HandleCore;
-
         /// <summary>
-        /// Update a customer
+        /// Updates a customer record
         /// </summary>
-        /// <param name="id"></param>
-        /// <param name="name"></param>
+        /// <param name="id">Customer Id</param>
         /// <returns></returns>
-        private IResult HandleCore(string id, CustomerDto customerDto)
+        [HandlerMethod]
+        private IResult HandleCore(int id, CustomerDto customerDto)
         {
-            return Results.Ok();
+            var customer = _repository.GetById(id);
+            if (customer != null)
+                customer.Name = $"{customerDto.FirstName} {customerDto.LastName}";
+
+            return Results.Ok(customer);
+        }
+
+        public RouteHandlerBuilder MapEndpoint(IEndpointRouteBuilder app)
+        {
+            return app.MapPut("/api/v1/customers/{id}", HandleCore)
+                .WithName("UpdateCustomer")
+                .WithTags("Customer")
+                .Accepts<CustomerDto>("application/json", ["application/xml"]);
         }
     }
 }

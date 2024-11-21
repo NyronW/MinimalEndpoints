@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace MinimalEndpoints;
 
@@ -35,10 +37,12 @@ public static class EndpointRouteBuilderExtensions
         using var scope = builder.ServiceProvider.CreateScope();
         var services = scope.ServiceProvider;
 
+        var logger = services.GetRequiredService<ILogger<IEndpointRouteBuilder>>();
+
         var endpointDescriptors = builder.ServiceProvider.GetRequiredService<EndpointDescriptors>();
 
+        var definitions = services.GetServices<IEndpointDefinition>();
         var endpoints = services.GetServices<IEndpoint>();
-        if (endpoints == null) return builder;
 
         var serviceConfig = new EndpointConfiguration
         {
@@ -49,8 +53,30 @@ public static class EndpointRouteBuilderExtensions
 
         var endpointHandler = services.GetRequiredService<EndpointHandler>();
 
+        logger.LogDebug("Mapping IEndpointDefinition implementations");
+        foreach (var definition in definitions)
+        {
+            MethodInfo handlerMethodInfo = definition.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
+                            .FirstOrDefault(m => m.GetCustomAttribute<HandlerMethodAttribute>() != null)!;
+            if (handlerMethodInfo != null)
+            {
+                var name = definition.GetType().Name;
+
+                var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
+                        .Select(p => GetParameterTypeName(p.ParameterType)));
+                var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
+                endpointDescriptors.Add(new EndpointDescriptor(name, definition.GetType().FullName!, "", "", handlerMethodInfo.Name, handlerMethodName, string.Empty));
+            }
+
+            definition.MapEndpoint(builder);
+        }
+
+        logger.LogDebug("Mapping IEndpoint implementations");
         foreach (var endpoint in endpoints)
         {
+            // If the endpoint is also an IEndpointDefinition, prioritize its logic
+            if (endpoint is IEndpointDefinition _) continue;
+
             var name = endpoint.GetType().Name;
             var pattern = endpoint.Pattern;
 
@@ -81,7 +107,9 @@ public static class EndpointRouteBuilderExtensions
             var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
             endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName, routeName!));
 
-            var mapping = builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
+            var (isOverridden, MapEndpoint) = IsMapEndpointOverridden(endpoint.GetType());
+
+            RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
 
             if (!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
             {
@@ -168,7 +196,7 @@ public static class EndpointRouteBuilderExtensions
             else if (serviceConfig.DefaultGroupName is { })
                 mapping.WithGroupName(serviceConfig.DefaultGroupName);
 
-            if(!string.IsNullOrWhiteSpace(serviceConfig.DefaultRateLimitingPolicyName))
+            if (!string.IsNullOrWhiteSpace(serviceConfig.DefaultRateLimitingPolicyName))
                 mapping.RequireRateLimiting(serviceConfig.DefaultRateLimitingPolicyName);
 
             if (tagAttr.RateLimitingPolicyName is { } || tagAttr.DisableRateLimiting is { })
@@ -195,5 +223,11 @@ public static class EndpointRouteBuilderExtensions
             // Handle non-generic types
             return type.FullName!.Replace("+", ".");
         }
+    }
+
+    private static (bool, MethodInfo) IsMapEndpointOverridden(Type endpointType)
+    {
+        var method = endpointType.GetMethod(nameof(IEndpoint.MapEndpoint), [typeof(IEndpointRouteBuilder)]);
+        return (method != null && method.DeclaringType != typeof(IEndpoint), method!);
     }
 }

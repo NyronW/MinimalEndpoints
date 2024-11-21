@@ -4,10 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions;
 using MinimalEndpoints.Extensions.Http;
-using System;
 using System.Collections.Concurrent;
 using System.Reflection;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MinimalEndpoints;
 
@@ -46,7 +44,7 @@ public class EndpointHandler
                 if (isOverridden)
                 {
                     _logger.LogDebug("Executing custom BindAsync method for endpoint");
-                    var boundArgs = await (ValueTask<object[]>)BindAsync.Invoke(ep, new object[] { request, cancellationToken })!;
+                    var boundArgs = await (ValueTask<object[]>)BindAsync.Invoke(ep, [request, cancellationToken])!;
 
                     if (boundArgs.Length != parameters.Length)
                     {
