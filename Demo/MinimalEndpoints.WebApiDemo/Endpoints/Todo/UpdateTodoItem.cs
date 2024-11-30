@@ -8,7 +8,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
 [Endpoint(TagName = "Todo", OperationId = nameof(UpdateTodoItem))]
-public class UpdateTodoItem : EndpointBase, IEndpoint
+public class UpdateTodoItem : EndpointBase, IEndpointDefinition
 {
     private readonly ITodoRepository _repository;
 
@@ -18,11 +18,10 @@ public class UpdateTodoItem : EndpointBase, IEndpoint
         AddEndpointFilter<MyCustomEndpointFilter3>();
     }
 
-    public string Pattern => "/todos/{id}";
-
-    public HttpMethod Method => HttpMethod.Put;
-
-    public Delegate Handler => UpdateAsync;
+    public RouteHandlerBuilder MapEndpoint(IEndpointRouteBuilder app)
+    {
+        return app.MapPut("/todos/{id}", UpdateAsync);
+    }
 
     /// <summary>
     /// Updates a todo item completed status
@@ -34,6 +33,7 @@ public class UpdateTodoItem : EndpointBase, IEndpoint
     /// <response code="400">Invalid data passed from client</response>
     /// <response code="404">Item not found</response>
     /// <response code="500">Internal server error occured</response>
+    [HandlerMethod]
     private async Task<IResult> UpdateAsync(string id, bool completed)
     {
         await _repository.Update(id, completed);

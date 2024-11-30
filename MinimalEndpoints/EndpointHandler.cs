@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions;
 using MinimalEndpoints.Extensions.Http;
+using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 
@@ -142,10 +144,12 @@ public class EndpointHandler
         if (targetType == typeof(TimeSpan) && TimeSpan.TryParse(value, out var timeSpanValue)) return timeSpanValue;
         if (targetType == typeof(DateTime) && DateTime.TryParse(value, out var dateTimeValue)) return dateTimeValue;
         if (targetType == typeof(Guid) && Guid.TryParse(value, out var guidValue)) return guidValue;
-        if (targetType == typeof(DateOnly) && DateTime.TryParse(value, out var dateOnlyValue)) 
+        if (targetType == typeof(DateOnly) && DateTime.TryParse(value, out var dateOnlyValue))
             return DateOnly.FromDateTime(dateOnlyValue);
         if (targetType == typeof(TimeOnly) && DateTime.TryParse(value, out var timeOnlyValue))
             return TimeOnly.FromDateTime(timeOnlyValue);
+        if (targetType.IsEnum && Enum.TryParse(targetType, value, true, out var enumValue))
+            return enumValue;
 
         try
         {

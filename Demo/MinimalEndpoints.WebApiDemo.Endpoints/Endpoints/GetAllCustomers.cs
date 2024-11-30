@@ -34,7 +34,7 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     /// <param name="customer"></param>
     /// <returns>All customers</returns>
     [HandlerMethod]
-    private IResult GetCustomers([FromQuery] int pageNo, [FromQuery(Name ="size")] int pageSize, [FromHeader(Name ="x-foo-name")] string name, [FromQuery] bool? showInactive)
+    private IResult GetCustomers([FromQuery] CustomerType category,  [FromQuery] int pageNo, [FromQuery(Name ="size")] int pageSize, [FromHeader(Name ="x-foo-name")] string name, [FromQuery] bool? showInactive)
     {
         var customers = _customerRepository.GetAll().Skip((pageNo - 1) * pageSize).Take(pageSize);
 
@@ -44,3 +44,11 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     }
 }
 
+/// <summary>
+/// Customer category
+/// </summary>
+public enum CustomerType
+{
+    Premium,
+    Standard
+}

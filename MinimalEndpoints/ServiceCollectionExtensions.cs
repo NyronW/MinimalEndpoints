@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MinimalEndpoints.Authorization;
 using MinimalEndpoints.Extensions.Http.ContentNegotiation;
 using MinimalEndpoints.Extensions.Http.ModelBinding;
+using MinimalEndpoints.Extensions;
 using System.Reflection;
 
 namespace MinimalEndpoints;
@@ -71,8 +72,7 @@ public static class ServiceCollectionExtensions
 
         foreach (var assembly in assemblies)
         {
-            foreach (var type in assembly.ExportedTypes.Where(a => !a.IsAbstract && 
-                (typeof(IEndpoint).IsAssignableFrom(a) || typeof(IEndpointDefinition).IsAssignableFrom(a))))
+            foreach (var type in assembly.ExportedTypes.Where(a => !a.IsAbstract && a.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition))))
             {
                 var registered = services.Any(sd => sd.ImplementationType == type);
                 if (registered) continue;
@@ -80,7 +80,7 @@ public static class ServiceCollectionExtensions
                 var interfaces = type.GetInterfaces();
                 foreach (var @interface in interfaces.Where(i => interfaceTypes.Any(t => t == i)))
                 {
-                    //services.AddScoped(type);
+                    services.AddScoped(type);
                     services.AddScoped(@interface, type);
                 }
             }

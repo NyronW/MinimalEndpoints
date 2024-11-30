@@ -68,7 +68,7 @@ public class GetAllCustomers : IEndpoint
 }
 ```
 
-Version 1.5 introduced a new interface called IEndpointDefinition that offers greater control when defining an endpoint.
+Version 1.4 introduced a new interface called IEndpointDefinition that offers greater control when defining an endpoint.
 
 ```csharp
 public class UpdateCustomer : IEndpointDefinition

@@ -4,19 +4,15 @@ using Microsoft.AspNetCore.Routing;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
 {
-    public class UpdateCustomer : IEndpointDefinition
+    public class UpdateCustomer(ICustomerRepository repository) : IEndpointDefinition
     {
-        private readonly ICustomerRepository _repository;
-
-        public UpdateCustomer(ICustomerRepository repository)
-        {
-            _repository = repository;
-        }
+        private readonly ICustomerRepository _repository = repository;
 
         /// <summary>
         /// Updates a customer record
         /// </summary>
         /// <param name="id">Customer Id</param>
+        /// <param name="customerDto">Customer dto containing values to be saved</param>
         /// <returns></returns>
         [HandlerMethod]
         private IResult HandleCore(int id, CustomerDto customerDto)
