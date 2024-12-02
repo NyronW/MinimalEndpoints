@@ -6,13 +6,18 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.ObjectPool;
 using System.Reflection;
+using System.Text;
 
 namespace MinimalEndpoints;
 
 public static class EndpointRouteBuilderExtensions
 {
-    internal static IServiceProvider ServiceProvider { get; set; }
+    private static readonly ObjectPool<StringBuilder> StringBuilderPool =
+        new DefaultObjectPoolProvider().CreateStringBuilderPool();
+
+    internal static IServiceProvider ServiceProvider { get; set; } = null!;
 
     /// <summary>
     /// Configure Minimal endpints
@@ -49,7 +54,6 @@ public static class EndpointRouteBuilderExtensions
 
         configuration?.Invoke(serviceConfig);
 
-        var endpointHandler = services.GetRequiredService<EndpointHandler>();
         var mappedCount = 0;
 
         logger.LogTrace("Executing IEndpointDefinition implementations");
@@ -81,12 +85,15 @@ public static class EndpointRouteBuilderExtensions
                             .Select(p => GetParameterTypeName(p.ParameterType)));
                     var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
 
-                    endpointDescriptors.Add(new EndpointDescriptor(name, definition.GetType().FullName!, pattern, httpMethod, handlerMethodInfo.Name, handlerMethodName, string.Empty));
+                    endpointDescriptors.Add(new EndpointDescriptor(name, definition.GetType().FullName!, pattern!, httpMethod!, handlerMethodInfo.Name, handlerMethodName, string.Empty));
                 }
 
-                logger.LogDebug($"Executing mapping for endpoint definition class '{name}'");
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.LogDebug($"Executing mapping for endpoint definition class '{name}'");
+                }
 
-                mappedCount++;  
+                mappedCount++;
             }
             catch (Exception ex)
             {
@@ -116,28 +123,56 @@ public static class EndpointRouteBuilderExtensions
                     pattern = $"{tagAttr.RoutePrefixOverride.TrimEnd('/')}/{endpoint.Pattern.TrimStart('/')}";
                 }
 
-                logger.LogDebug($"Mapping request path '{pattern}' to class '{name}'");
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.LogDebug($"Mapping request path '{pattern}' to class '{name}'");
+                }
 
                 var methods = new[] { endpoint.Method.Method };
 
                 var routeName = tagAttr?.RouteName ?? string.Empty;
 
                 // Create and add the descriptor to the collection
-                MethodInfo handlerMethodInfo = endpoint.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-                                            .FirstOrDefault(m => m.GetCustomAttribute<HandlerMethodAttribute>() != null)!;
-                if (handlerMethodInfo == null)
-                {
-                    handlerMethodInfo = endpoint.Handler.Method;
-                }
+                var handlerMethodInfo = endpoint.GetType()
+                    .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                    .FirstOrDefault(m => m.IsDefined(typeof(HandlerMethodAttribute), inherit: false))
+                    ?? endpoint.Handler.Method;
 
-                var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
-                        .Select(p => GetParameterTypeName(p.ParameterType)));
-                var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
-                endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName, routeName!));
+                //var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
+                //        .Select(p => GetParameterTypeName(p.ParameterType)));
+                //var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
+                var sb = StringBuilderPool.Get();
+                try
+                {
+                    sb.Append(handlerMethodInfo.DeclaringType?.FullName);
+                    sb.Append('.');
+                    sb.Append(handlerMethodInfo.Name);
+                    sb.Append('(');
+
+                    var parameters = handlerMethodInfo.GetParameters();
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        if (i > 0) sb.Append(',');
+                        sb.Append(GetParameterTypeName(parameters[i].ParameterType));
+                    }
+                    sb.Append(')');
+
+                    var handlerMethodName = sb.ToString();
+                    endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName, routeName!));
+                }
+                finally
+                {
+                    sb.Clear();
+                    StringBuilderPool.Return(sb);
+                }
 
                 var (isOverridden, MapEndpoint) = IsMapEndpointOverridden(endpoint.GetType());
 
-                RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) => endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken));
+                RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) =>
+                {
+                    var endpointHandler = sp.GetRequiredService<EndpointHandler>();
+                    return endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken);
+                });
                 mappedCount++;
 
                 if (!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
@@ -251,14 +286,31 @@ public static class EndpointRouteBuilderExtensions
     {
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
         {
-            Type underlyingType = Nullable.GetUnderlyingType(type)!;
-            return $"System.Nullable{{{underlyingType.FullName?.Replace("+", ".")}}}";
+            //Type underlyingType = Nullable.GetUnderlyingType(type)!;
+            //return $"System.Nullable{{{underlyingType.FullName?.Replace("+", ".")}}}";
+
+            var underlyingType = Nullable.GetUnderlyingType(type)!;
+            var underlyingTypeName = underlyingType.FullName;
+
+            // Avoid unnecessary Replace calls if '+' doesn't exist
+            if (underlyingTypeName?.Contains('+') == true)
+            {
+                underlyingTypeName = underlyingTypeName.Replace("+", ".");
+            }
+
+            return $"System.Nullable{{{underlyingTypeName}}}";
         }
-        else
+
+        // Handle non-generic types
+        //return type.FullName!.Replace("+", ".");
+
+        var fullName = type.FullName;
+        if (fullName?.Contains('+') == true)
         {
-            // Handle non-generic types
-            return type.FullName!.Replace("+", ".");
+            fullName = fullName.Replace("+", ".");
         }
+
+        return fullName!;
     }
 
     private static (bool, MethodInfo) IsMapEndpointOverridden(Type endpointType)

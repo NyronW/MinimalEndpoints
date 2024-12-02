@@ -80,7 +80,7 @@ public abstract class EndpointBase<TRequest, TResponse> : EndpointBase, IEndpoin
             }
             catch (EndpointModelBindingException ex)
             {
-                _logger.LogError(ex, $"Unhandled exception occured while attempting to bind data");
+                _logger.LogError(ex, "Unhandled exception occured while attempting to bind data");
 
                 var exceptionDetails = (IHaveValidationProblemDetails)ex;
 
@@ -122,7 +122,7 @@ public abstract class EndpointBase<TRequest, TResponse> : EndpointBase, IEndpoin
 
     public virtual Task<IEnumerable<ValidationError>> ValidateAsync(TRequest request)
     {
-        var errors = new List<ValidationError>();
+        var errors = Array.Empty<ValidationError>();
 
         return Task.FromResult(errors.AsEnumerable());
     }

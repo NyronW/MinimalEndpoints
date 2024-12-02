@@ -9,16 +9,15 @@ public sealed class CorrelationIdFilter(string headerName) : IEndpointFilter
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var httpContext = context.HttpContext;
-        if (!httpContext.Request.Headers.TryGetValue(_headerName, out var correlationId))
+        if (!httpContext.Request.Headers.TryGetValue(_headerName, out var correlationId) || string.IsNullOrEmpty(correlationId))
         {
             correlationId = Guid.NewGuid().ToString();
         }
 
-        httpContext.Response.OnStarting(() =>
+        if (!httpContext.Response.Headers.ContainsKey(_headerName))
         {
-            httpContext.Response.Headers[_headerName] = correlationId;
-            return Task.CompletedTask;
-        });
+            httpContext.Response.Headers.Append(_headerName, correlationId);
+        }
 
         return await next(context);
     }

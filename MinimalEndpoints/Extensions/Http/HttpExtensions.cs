@@ -80,7 +80,7 @@ public static class HttpExtensions
         }
     }
 
-    public static async Task<object> ReadFromXmlAsync(this HttpRequest request, Type type, CancellationToken cancellationToken = default)
+    public static async ValueTask<object> ReadFromXmlAsync(this HttpRequest request, Type type, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 

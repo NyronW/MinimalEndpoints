@@ -59,7 +59,7 @@ public class Response
     public string? Email { get; set; }
 }
 
-public class Endpoint : Endpoint<Request, Response>
+public class Endpoint : IEndpoint
 {
     private readonly IValidator<Request> _validator;
 
@@ -68,11 +68,13 @@ public class Endpoint : Endpoint<Request, Response>
         _validator = validator;
     }
 
-    public override string Pattern => "/benchmark/ok/{id}";
+    public string Pattern => "/benchmark/ok/{id}";
 
-    public override HttpMethod Method =>  HttpMethod.Post;
+    public HttpMethod Method =>  HttpMethod.Post;
 
-    public override async Task<Response> SendAsync(Request request, CancellationToken cancellationToken = default)
+    public Delegate Handler => SendAsync;
+
+    public async Task<Response> SendAsync(Request request, CancellationToken cancellationToken = default)
     {
         await _validator.ValidateAsync(request);
 

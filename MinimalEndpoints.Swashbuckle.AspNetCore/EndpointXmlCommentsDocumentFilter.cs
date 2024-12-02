@@ -19,13 +19,15 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
     {
         var endpointTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(a => a.ExportedTypes)
-            .Where(t => t.IsClass && !t.IsAbstract && t.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition)))
             .ToList();
 
         var logger = _endpointDescriptors.ServiceProvider.GetRequiredService<ILogger<EndpointXmlCommentsDocumentFilter>>();
 
         foreach (var endpointType in endpointTypes)
         {
+            if (endpointType.IsAbstract || !endpointType.IsClass ||
+                 !endpointType.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition)))
+                        continue;
             try
             {
                 var descriptor = _endpointDescriptors.Descriptors.FirstOrDefault(d => d.ClassName == endpointType.FullName);

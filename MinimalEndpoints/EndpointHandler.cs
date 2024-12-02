@@ -1,11 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions;
 using MinimalEndpoints.Extensions.Http;
-using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 
@@ -13,18 +11,24 @@ namespace MinimalEndpoints;
 
 public class EndpointHandler
 {
+    private const string _endpointCorrIdName = "EndpointName";
+
     private readonly ILogger<EndpointHandler> _logger;
+    private readonly ConcurrentDictionary<Type, (bool IsOverridden, MethodInfo? Method)> _bindingCache;
+    private readonly ConcurrentDictionary<MethodInfo, MethodDetails> _methodCache;
+    private readonly ConcurrentDictionary<Type, object?> _valueTypeInstances;
+
     private readonly Func<IEndpoint, IServiceProvider, ILoggerFactory, HttpRequest, CancellationToken, Task<object?>> _handler;
 
-    public EndpointHandler(ILogger<EndpointHandler> logger)
+    public EndpointHandler(ILogger<EndpointHandler> logger, ConcurrentDictionary<Type, object?> valueTypeInstances,
+        ConcurrentDictionary<MethodInfo, MethodDetails> methodCache,
+        ConcurrentDictionary<Type, (bool IsOverridden, MethodInfo? Method)> bindingCache)
     {
         _handler = CreateHandler();
         _logger = logger;
-
-        _valueTypeInstances.GetOrAdd(typeof(int), Activator.CreateInstance);
-        _valueTypeInstances.GetOrAdd(typeof(bool), Activator.CreateInstance);
-        _valueTypeInstances.GetOrAdd(typeof(double), Activator.CreateInstance);
-        _valueTypeInstances.GetOrAdd(typeof(float), Activator.CreateInstance);
+        _valueTypeInstances = valueTypeInstances;
+        _methodCache = methodCache;
+        _bindingCache = bindingCache;
     }
 
     private Func<IEndpoint, IServiceProvider, ILoggerFactory, HttpRequest, CancellationToken, Task<object?>> CreateHandler()
@@ -32,10 +36,16 @@ public class EndpointHandler
         return async (endpoint, sp, loggerFactory, request, cancellationToken) =>
         {
             object? result = null!;
-            using var _ = _logger.AddContext("EndpointName", endpoint.GetType().FullName);
+            var endpointName = endpoint.GetType().FullName;
+            using var _ = _logger.AddContext(_endpointCorrIdName, endpointName);
+
             try
             {
-                _logger.LogInformation("Executing endpoint: '{EndpointName}'", endpoint.GetType().FullName);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Executing endpoint: '{EndpointName}'", endpointName);
+                }
+
                 var ep = (IEndpoint)sp.GetService(endpoint.GetType())!;
 
                 var (methodInfo, parameters) = GetMethodDetails(ep.Handler.Method);
@@ -71,7 +81,10 @@ public class EndpointHandler
                         args[i] = await BindParameter(parameters[i], sp, request, cancellationToken);
                 }
 
-                _logger.LogDebug("Endpoint argumment binding completed, invoking handler method");
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogDebug("Endpoint argumment binding completed, invoking handler method");
+                }
 
                 // Invoke the delegate with the dynamically bound parameters
                 if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
@@ -88,7 +101,10 @@ public class EndpointHandler
                     result = methodInfo.Invoke(ep.Handler.Target, args)!;
                 }
 
-                _logger.LogDebug("handler method execution completed");
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("handler method execution completed");
+                }
             }
             catch (TargetInvocationException ex)
             {
@@ -110,59 +126,7 @@ public class EndpointHandler
         return _handler(endpoint, sp, loggerFactory, request, cancellationToken);
     }
 
-
-    private static readonly ConcurrentDictionary<Type, object?> _valueTypeInstances = new ConcurrentDictionary<Type, object?>();
-    private object? ConvertParameter(string value, Type type)
-    {
-        _logger.LogDebug("Converting type for value: '{ParameterValue}' to '{ParameterType}'", value, type.Name);
-        if (type == typeof(string)) return value;
-
-        var underlyingType = Nullable.GetUnderlyingType(type);
-
-        if (string.IsNullOrEmpty(value))
-        {
-            if (underlyingType != null) return null;
-            if (!type.IsValueType) return null;
-            return _valueTypeInstances.GetOrAdd(type, Activator.CreateInstance);
-        }
-
-        var targetType = underlyingType ?? type;
-
-        if (targetType == typeof(int) && int.TryParse(value, out var intValue)) return intValue;
-        if (targetType == typeof(double) && double.TryParse(value, out var doubleValue)) return doubleValue;
-        if (targetType == typeof(decimal) && decimal.TryParse(value, out var decimalValue)) return decimalValue;
-        if (targetType == typeof(bool) && bool.TryParse(value, out var boolValue)) return boolValue;
-        if (targetType == typeof(long) && long.TryParse(value, out var longValue)) return longValue;
-        if (targetType == typeof(float) && float.TryParse(value, out var floatValue)) return floatValue;
-        if (targetType == typeof(byte) && byte.TryParse(value, out var byteValue)) return byteValue;
-        if (targetType == typeof(short) && short.TryParse(value, out var shortValue)) return shortValue;
-        if (targetType == typeof(sbyte) && sbyte.TryParse(value, out var sbyteValue)) return sbyteValue;
-        if (targetType == typeof(ushort) && ushort.TryParse(value, out var ushortValue)) return ushortValue;
-        if (targetType == typeof(uint) && uint.TryParse(value, out var uintValue)) return uintValue;
-        if (targetType == typeof(ulong) && ulong.TryParse(value, out var ulongValue)) return ulongValue;
-        if (targetType == typeof(char) && char.TryParse(value, out var charValue)) return charValue;
-        if (targetType == typeof(TimeSpan) && TimeSpan.TryParse(value, out var timeSpanValue)) return timeSpanValue;
-        if (targetType == typeof(DateTime) && DateTime.TryParse(value, out var dateTimeValue)) return dateTimeValue;
-        if (targetType == typeof(Guid) && Guid.TryParse(value, out var guidValue)) return guidValue;
-        if (targetType == typeof(DateOnly) && DateTime.TryParse(value, out var dateOnlyValue))
-            return DateOnly.FromDateTime(dateOnlyValue);
-        if (targetType == typeof(TimeOnly) && DateTime.TryParse(value, out var timeOnlyValue))
-            return TimeOnly.FromDateTime(timeOnlyValue);
-        if (targetType.IsEnum && Enum.TryParse(targetType, value, true, out var enumValue))
-            return enumValue;
-
-        try
-        {
-            return Convert.ChangeType(value, targetType);
-        }
-        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
-        {
-            return type.IsValueType && underlyingType == null
-                ? _valueTypeInstances.GetOrAdd(type, Activator.CreateInstance)
-                : null;
-        }
-    }
-    private async Task<object?> BindParameter(ParameterInfo param, IServiceProvider sp, HttpRequest request, CancellationToken cancellationToken)
+    private async ValueTask<object?> BindParameter(ParameterInfo param, IServiceProvider sp, HttpRequest request, CancellationToken cancellationToken)
     {
         object? value = null;
         object? requestBodyObject = null!;
@@ -212,7 +176,7 @@ public class EndpointHandler
             else
             {
                 var routeVal = request.RouteValues[param.Name!]?.ToString();
-                if (routeVal == $"{{{param.Name!}}}") routeVal = null!;
+                if (!string.IsNullOrEmpty(routeVal) && routeVal == $"{{{param.Name!}}}") routeVal = null!;
 
                 string stringValue = routeVal! ??
                                      request.Query[param.Name!].FirstOrDefault()! ??
@@ -264,8 +228,60 @@ public class EndpointHandler
         return value;
     }
 
-    #region MethodDetailsCache
-    private static readonly ConcurrentDictionary<MethodInfo, MethodDetails> _methodCache = new ConcurrentDictionary<MethodInfo, MethodDetails>();
+    private object? ConvertParameter(string value, Type type)
+    {
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Converting type for value: '{ParameterValue}' to '{ParameterType}'", value, type.Name);
+        }
+
+        if (type == typeof(string)) return value;
+
+        var underlyingType = Nullable.GetUnderlyingType(type);
+
+        if (string.IsNullOrEmpty(value))
+        {
+            if (underlyingType != null) return null;
+            if (!type.IsValueType) return null;
+            return _valueTypeInstances.GetOrAdd(type, Activator.CreateInstance);
+        }
+
+        var targetType = underlyingType ?? type;
+
+        if (targetType == typeof(int) && int.TryParse(value, out var intValue)) return intValue;
+        if (targetType == typeof(double) && double.TryParse(value, out var doubleValue)) return doubleValue;
+        if (targetType == typeof(decimal) && decimal.TryParse(value, out var decimalValue)) return decimalValue;
+        if (targetType == typeof(bool) && bool.TryParse(value, out var boolValue)) return boolValue;
+        if (targetType == typeof(long) && long.TryParse(value, out var longValue)) return longValue;
+        if (targetType == typeof(float) && float.TryParse(value, out var floatValue)) return floatValue;
+        if (targetType == typeof(byte) && byte.TryParse(value, out var byteValue)) return byteValue;
+        if (targetType == typeof(short) && short.TryParse(value, out var shortValue)) return shortValue;
+        if (targetType == typeof(sbyte) && sbyte.TryParse(value, out var sbyteValue)) return sbyteValue;
+        if (targetType == typeof(ushort) && ushort.TryParse(value, out var ushortValue)) return ushortValue;
+        if (targetType == typeof(uint) && uint.TryParse(value, out var uintValue)) return uintValue;
+        if (targetType == typeof(ulong) && ulong.TryParse(value, out var ulongValue)) return ulongValue;
+        if (targetType == typeof(char) && char.TryParse(value, out var charValue)) return charValue;
+        if (targetType == typeof(TimeSpan) && TimeSpan.TryParse(value, out var timeSpanValue)) return timeSpanValue;
+        if (targetType == typeof(DateTime) && DateTime.TryParse(value, out var dateTimeValue)) return dateTimeValue;
+        if (targetType == typeof(Guid) && Guid.TryParse(value, out var guidValue)) return guidValue;
+        if (targetType == typeof(DateOnly) && DateTime.TryParse(value, out var dateOnlyValue))
+            return DateOnly.FromDateTime(dateOnlyValue);
+        if (targetType == typeof(TimeOnly) && DateTime.TryParse(value, out var timeOnlyValue))
+            return TimeOnly.FromDateTime(timeOnlyValue);
+        if (targetType.IsEnum && Enum.TryParse(targetType, value, true, out var enumValue))
+            return enumValue;
+
+        try
+        {
+            return Convert.ChangeType(value, targetType);
+        }
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+        {
+            return type.IsValueType && underlyingType == null
+                ? _valueTypeInstances.GetOrAdd(type, Activator.CreateInstance)
+                : null;
+        }
+    }
 
     private MethodDetails GetMethodDetails(MethodInfo methodInfo)
     {
@@ -274,7 +290,10 @@ public class EndpointHandler
             throw new ArgumentNullException(nameof(methodInfo), "MethodInfo cannot be null");
         }
 
-        _logger.LogDebug("Getting method details for request endpoint");
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Getting method details for request endpoint");
+        }
 
         return _methodCache.GetOrAdd(methodInfo, mi =>
         {
@@ -287,22 +306,6 @@ public class EndpointHandler
         });
     }
 
-    internal class MethodDetails
-    {
-        public MethodInfo MethodInfo { get; set; }
-        public ParameterInfo[] Parameters { get; set; }
-
-        public void Deconstruct(out MethodInfo methodInfo, out ParameterInfo[] parameters)
-        {
-            methodInfo = this.MethodInfo;
-            parameters = this.Parameters;
-        }
-    }
-    #endregion
-
-    #region BindAsyncOverrideCache
-    private static readonly ConcurrentDictionary<Type, (bool IsOverridden, MethodInfo? Method)> _bindingCache = new ConcurrentDictionary<Type, (bool, MethodInfo?)>();
-
     public (bool, MethodInfo) IsBindAsyncOverridden(Type endpointType)
     {
         return _bindingCache.GetOrAdd(endpointType, type =>
@@ -311,6 +314,16 @@ public class EndpointHandler
             return (method != null && method.DeclaringType != typeof(IEndpoint), method);
         })!;
     }
-    #endregion
 }
 
+public class MethodDetails
+{
+    public MethodInfo MethodInfo { get; set; }
+    public ParameterInfo[] Parameters { get; set; } = Array.Empty<ParameterInfo>();
+
+    public void Deconstruct(out MethodInfo methodInfo, out ParameterInfo[] parameters)
+    {
+        methodInfo = MethodInfo;
+        parameters = Parameters;
+    }
+}

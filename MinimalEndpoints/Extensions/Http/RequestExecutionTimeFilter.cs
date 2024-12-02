@@ -10,7 +10,7 @@ public sealed class RequestExecutionTimeFilter(ILogger<RequestExecutionTimeFilte
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var stopwatch = Stopwatch.StartNew();
+        var stopwatch = ValueStopwatch.StartNew();
         var httpContext = context.HttpContext;
         var method = httpContext.Request.Method;
         var path = httpContext.Request.Path;
@@ -27,8 +27,28 @@ public sealed class RequestExecutionTimeFilter(ILogger<RequestExecutionTimeFilte
         }
         finally
         {
-            stopwatch.Stop();
             _logger.LogInformation("Request {Method} {Path} executed in {Duration}ms", method, path, stopwatch.ElapsedMilliseconds);
+        }
+    }
+}
+
+internal readonly struct ValueStopwatch
+{
+    private readonly long _startTimestamp;
+
+    private ValueStopwatch(long startTimestamp)
+    {
+        _startTimestamp = startTimestamp;
+    }
+
+    public static ValueStopwatch StartNew() => new(Stopwatch.GetTimestamp());
+
+    public long ElapsedMilliseconds
+    {
+        get
+        {
+            var elapsedTicks = Stopwatch.GetTimestamp() - _startTimestamp;
+            return elapsedTicks * 1000 / Stopwatch.Frequency;
         }
     }
 }

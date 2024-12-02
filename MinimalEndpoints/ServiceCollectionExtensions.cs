@@ -5,6 +5,8 @@ using MinimalEndpoints.Extensions.Http.ContentNegotiation;
 using MinimalEndpoints.Extensions.Http.ModelBinding;
 using MinimalEndpoints.Extensions;
 using System.Reflection;
+using System.Collections.Concurrent;
+using static MinimalEndpoints.EndpointHandler;
 
 namespace MinimalEndpoints;
 
@@ -72,14 +74,21 @@ public static class ServiceCollectionExtensions
 
         foreach (var assembly in assemblies)
         {
-            foreach (var type in assembly.ExportedTypes.Where(a => !a.IsAbstract && a.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition))))
-            {
-                var registered = services.Any(sd => sd.ImplementationType == type);
-                if (registered) continue;
+            var exportedTypes = assembly.ExportedTypes;
 
-                var interfaces = type.GetInterfaces();
-                foreach (var @interface in interfaces.Where(i => interfaceTypes.Any(t => t == i)))
+            foreach (var type in exportedTypes)
+            {
+                if (type.IsAbstract || !type.IsClass ||
+                        !type.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition)))
+                    continue;
+
+                if (services.Any(sd => sd.ImplementationType == type)) continue;
+
+                foreach (var @interface in type.GetInterfaces())
                 {
+                    if (!interfaceTypes.Contains(@interface))
+                        continue;
+
                     services.AddScoped(type);
                     services.AddScoped(@interface, type);
                 }
@@ -106,6 +115,57 @@ public static class ServiceCollectionExtensions
             descriptions.ServiceProvider = sp;
             return descriptions;
         });
+
+        ConcurrentDictionary<Type, object?> _valueTypeInstances = new()
+        {
+            [typeof(int)] = 0,
+            [typeof(bool)] = false,
+            [typeof(double)] = 0.0,
+            [typeof(float)] = 0.0f,
+            [typeof(byte)] = (byte)0,
+            [typeof(sbyte)] = (sbyte)0,
+            [typeof(short)] = (short)0,
+            [typeof(ushort)] = (ushort)0,
+            [typeof(long)] = 0L,
+            [typeof(ulong)] = 0UL,
+            [typeof(uint)] = 0U,
+            [typeof(char)] = '\0',
+            [typeof(decimal)] = 0m,
+
+            // Nullable types
+            [typeof(int?)] = null,
+            [typeof(bool?)] = null,
+            [typeof(double?)] = null,
+            [typeof(float?)] = null,
+            [typeof(byte?)] = null,
+            [typeof(sbyte?)] = null,
+            [typeof(short?)] = null,
+            [typeof(ushort?)] = null,
+            [typeof(long?)] = null,
+            [typeof(ulong?)] = null,
+            [typeof(uint?)] = null,
+            [typeof(char?)] = null,
+            [typeof(decimal?)] = null,
+
+            // Common structs
+            [typeof(Guid)] = Guid.Empty,
+            [typeof(Guid?)] = null,
+            [typeof(DateTime)] = default(DateTime),
+            [typeof(DateTime?)] = null,
+            [typeof(TimeSpan)] = default(TimeSpan),
+            [typeof(TimeSpan?)] = null,
+            [typeof(DateOnly)] = default(DateOnly),
+            [typeof(DateOnly?)] = null,
+            [typeof(TimeOnly)] = default(TimeOnly),
+            [typeof(TimeOnly?)] = null,
+        };
+        services.AddSingleton(sp => _valueTypeInstances);
+
+        ConcurrentDictionary<MethodInfo, MethodDetails> _methodCache = new();
+        services.AddSingleton(sp => _methodCache);
+
+        ConcurrentDictionary<Type, (bool IsOverridden, MethodInfo? Method)> _bindingCache = new();
+        services.AddSingleton(sp => _bindingCache);
 
         services.AddSingleton<EndpointHandler>();
 
