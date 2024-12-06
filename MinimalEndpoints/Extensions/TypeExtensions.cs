@@ -2,15 +2,16 @@
 
 public static class TypeExtensions
 {
-    public static bool DerivedFromAny(this Type type, params Type[] types)
+    public static bool DerivedFromAny(this Type type, IReadOnlyList<Type> types)
     {
-        foreach (var baseType in types)
+        for (int i = 0; i < types.Count; i++)
         {
-            if (baseType.IsAssignableFrom(type))
+            if (types[i].IsAssignableFrom(type))
             {
                 return true;
             }
         }
         return false;
     }
+
 }

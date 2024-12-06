@@ -18,326 +18,272 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {
         var endpointTypes = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a => a.ExportedTypes)
-            .ToList();
+            .Where(a => !a.IsDynamic && a.GetName().Name != null)
+            .SelectMany(a => a.DefinedTypes)
+            .Where(t => t.IsClass && !t.IsAbstract && t.DerivedFromAny([typeof(IEndpoint), typeof(IEndpointDefinition)]))
+            .ToArray();
 
         var logger = _endpointDescriptors.ServiceProvider.GetRequiredService<ILogger<EndpointXmlCommentsDocumentFilter>>();
 
         foreach (var endpointType in endpointTypes)
         {
-            if (endpointType.IsAbstract || !endpointType.IsClass ||
-                 !endpointType.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition)))
-                        continue;
             try
             {
                 var descriptor = _endpointDescriptors.Descriptors.FirstOrDefault(d => d.ClassName == endpointType.FullName);
-                if (descriptor == null) continue;
+                if (descriptor == null || string.IsNullOrEmpty(descriptor.Pattern) || descriptor.HttpMethod == null)
+                    continue;
 
-                var xmlMemberName = $"M:{descriptor.HandlerIdentifier}";
-                if (_xmlComments.TryGetValue(xmlMemberName, out var xmlComments))
+                if (!_xmlComments.TryGetValue($"M:{descriptor.HandlerIdentifier}", out var xmlComments))
+                    continue;
+
+                var operationType = descriptor.HttpMethod.ToOpenApiOperationMethod();
+                if (!swaggerDoc.Paths.TryGetValue(descriptor.Pattern, out var pathItem))
                 {
-                    if (string.IsNullOrEmpty(descriptor.Pattern) || descriptor.HttpMethod == null) continue;
+                    logger.LogDebug("Path {Pattern} not found in the swagger document", descriptor.Pattern);
+                    continue;
+                }
 
-                    var operationType = descriptor.HttpMethod.ToOpenApiOperationMethod();
+                var operation = pathItem.Operations.FirstOrDefault(o => o.Key == operationType).Value;
+                if (operation == null) continue;
 
-                    if (!swaggerDoc.Paths.TryGetValue(descriptor.Pattern, out var pathItem))
+                operation.Summary = xmlComments.Summary;
+                operation.Description = xmlComments.Description;
+
+                MethodInfo handlerMethodInfo = endpointType.GetMethod(descriptor.HandlerMethod, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)!;
+                if (handlerMethodInfo == null) continue;
+
+                var schemas = context.SchemaRepository.Schemas;
+
+                var undocumentedParams = handlerMethodInfo.GetParameters()
+                        .Where(p => !xmlComments.Parameters.Any(cp => p.Name == cp.Name)
+                        && p.ParameterType != typeof(CancellationToken)).ToArray();
+
+                if (undocumentedParams.Length != 0)
+                {
+                    logger.LogDebug("Attempting to include parameters were not documented for {EndpointType}.{HandlerMethod}", endpointType.FullName, descriptor.HandlerMethod);
+                    xmlComments.Parameters.AddRange(undocumentedParams.Select(p => new XmlCommentParameter
                     {
-                        logger.LogDebug("Path {Pattern} not found in the swagger document", descriptor.Pattern);
+                        Name = p.Name!,
+                        Description = string.Empty
+                    }));
+                }
+
+                foreach (var parameter in xmlComments.Parameters)
+                {
+                    ParameterInfo? paramInfo = handlerMethodInfo.GetParameters()
+                            .FirstOrDefault(p => p.Name == parameter.Name);
+
+                    if (paramInfo == null) continue;
+
+                    var propertyType = paramInfo.ParameterType;
+                    if (propertyType == typeof(CancellationToken)) continue;
+                    if (propertyType == typeof(HttpRequest)) continue;
+                    if (paramInfo.GetCustomAttribute<FromServicesAttribute>() != null)
                         continue;
+
+                    var isNullable = propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
+
+                    if (isNullable)
+                    {
+                        propertyType = Nullable.GetUnderlyingType(propertyType);
                     }
 
-                    var operation = pathItem.Operations.FirstOrDefault(o => o.Key == operationType).Value;
-                    if (operation == null) continue;
-
-                    operation.Summary = xmlComments.Summary;
-                    operation.Description = xmlComments.Description;
-
-                    MethodInfo handlerMethodInfo = endpointType.GetMethod(descriptor.HandlerMethod, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)!;
-
-                    var schemas = context.SchemaRepository.Schemas;
-
-                    var parameters = handlerMethodInfo.GetParameters()
-                            .Where(p => !xmlComments.Parameters.Any(cp => p.Name == cp.Name)
-                            && p.ParameterType != typeof(CancellationToken)).ToArray();
-
-                    if (parameters.Length != 0)
+                    var openApiParameter = new OpenApiParameter
                     {
-                        logger.LogDebug("Attempting to include parameters were not documented for {EndpointType}.{HandlerMethod}", endpointType.FullName, descriptor.HandlerMethod);
-                        xmlComments.Parameters.AddRange(parameters.Select(p => new XmlCommentParameter
-                        {
-                            Name = p.Name!,
-                            Description = string.Empty
-                        }));
-                    }
+                        Name = parameter.Name,
+                        Description = parameter.Description,
+                        Required = !isNullable
+                    };
 
-                    foreach (var parameter in xmlComments.Parameters)
+                    var defaultValue = paramInfo.HasDefaultValue ? paramInfo.DefaultValue : null;
+                    ParameterLocation? location = null!;
+
+                    if (paramInfo.GetCustomAttribute<FromQueryAttribute>() is { } queryAttribute)
                     {
-                        ParameterInfo? paramInfo = null!;
-
-                        if (handlerMethodInfo != null)
+                        location = ParameterLocation.Query;
+                        if (!string.IsNullOrEmpty(queryAttribute?.Name))
                         {
-                            paramInfo = handlerMethodInfo.GetParameters()
-                                .FirstOrDefault(p => p.Name == parameter.Name);
+                            openApiParameter.Name = queryAttribute.Name;
                         }
+                    }
 
-                        var openApiParameter = new OpenApiParameter
+                    if (paramInfo.GetCustomAttribute<FromHeaderAttribute>() is { } headerAttribute)
+                    {
+                        location = ParameterLocation.Header;
+                        if (!string.IsNullOrEmpty(headerAttribute?.Name))
                         {
-                            Name = parameter.Name,
-                            Description = parameter.Description
-                        };
+                            openApiParameter.Name = headerAttribute.Name;
+                        }
+                    }
 
-                        if (paramInfo != null)
+                    if (paramInfo.GetCustomAttribute<FromRouteAttribute>() is { } routeAttribute)
+                    {
+                        location = ParameterLocation.Path;
+                        if (!string.IsNullOrEmpty(routeAttribute?.Name))
                         {
-                            var propertyType = paramInfo.ParameterType;
-                            if (propertyType == typeof(CancellationToken)) continue;
-                            if (propertyType == typeof(HttpRequest)) continue;
+                            openApiParameter.Name = routeAttribute.Name;
+                        }
+                    }
 
-                            var isNullable = propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
 
-                            if (isNullable)
+                    if (location == null)
+                    {
+                        if (descriptor.Pattern.Contains(parameter.Name))
+                        {
+                            location = ParameterLocation.Path;
+                        }
+                        else if (propertyType!.BaseType == typeof(ValueType) || propertyType == typeof(string))
+                        {
+                            location = ParameterLocation.Query;
+                        }
+                        else
+                        {
+                            if (operation.RequestBody == null && schemas.Any(s => s.Key == propertyType.Name))
                             {
-                                propertyType = Nullable.GetUnderlyingType(propertyType);
-                            }
-
-                            openApiParameter.Required = !isNullable;
-
-                            var defaultValue = paramInfo.HasDefaultValue ? paramInfo.DefaultValue : null;
-                            ParameterLocation? location = null!;
-
-                            if (paramInfo.GetCustomAttribute<FromQueryAttribute>() != null)
-                            {
-                                location = ParameterLocation.Query;
-                                var attribute = paramInfo.GetCustomAttribute<FromQueryAttribute>();
-                                if (!string.IsNullOrEmpty(attribute?.Name))
+                                operation.RequestBody = new OpenApiRequestBody
                                 {
-                                    openApiParameter.Name = attribute.Name;
-                                }
-                            }
-                            else if (paramInfo.GetCustomAttribute<FromHeaderAttribute>() != null)
-                            {
-                                location = ParameterLocation.Header;
-                                var attribute = paramInfo.GetCustomAttribute<FromHeaderAttribute>();
-                                if (!string.IsNullOrEmpty(attribute?.Name))
-                                {
-                                    openApiParameter.Name = attribute.Name;
-                                }
-                            }
-                            else if (paramInfo.GetCustomAttribute<FromRouteAttribute>() != null)
-                            {
-                                location = ParameterLocation.Path;
-                                var attribute = paramInfo.GetCustomAttribute<FromRouteAttribute>();
-                                if (!string.IsNullOrEmpty(attribute?.Name))
-                                {
-                                    openApiParameter.Name = attribute.Name;
-                                }
-                            }
-                            else if (paramInfo.GetCustomAttribute<FromServicesAttribute>() != null)
-                            {
-                                continue;
-                            }
-
-                            if (location == null)
-                            {
-                                if (descriptor.Pattern.Contains(parameter.Name))
-                                {
-                                    location = ParameterLocation.Path;
-                                }
-                                else if (propertyType!.BaseType == typeof(ValueType) || propertyType == typeof(string))
-                                {
-                                    location = ParameterLocation.Query;
-                                }
-                                else
-                                {
-                                    if (operation.RequestBody == null && schemas.Any(s => s.Key == propertyType.Name))
+                                    Content = new Dictionary<string, OpenApiMediaType>
                                     {
-                                        operation.RequestBody = new OpenApiRequestBody
+                                        ["application/json"] = new OpenApiMediaType
                                         {
-                                            Content = new Dictionary<string, OpenApiMediaType>
+                                            Schema = new OpenApiSchema
                                             {
-                                                ["application/json"] = new OpenApiMediaType
+                                                Reference = new OpenApiReference
                                                 {
-                                                    Schema = new OpenApiSchema
-                                                    {
-                                                        Reference = new OpenApiReference
-                                                        {
-                                                            Id = propertyType.Name,
-                                                            Type = ReferenceType.Schema
-                                                        }
-                                                    }
+                                                    Id = propertyType.Name,
+                                                    Type = ReferenceType.Schema
                                                 }
                                             }
-                                        };
+                                        }
                                     }
-
-                                    continue;
-                                }
-                            }
-
-                            openApiParameter.In = location;
-
-                            if (propertyType == typeof(int))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "integer",
-                                    Format = "int32",
-                                    Example = defaultValue != null ? new OpenApiInteger((int)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiInteger((int)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(long))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "integer",
-                                    Format = "int64",
-                                    Example = defaultValue != null ? new OpenApiLong((long)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiLong((long)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(bool))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "boolean",
-                                    Example = defaultValue != null ? new OpenApiBoolean((bool)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiBoolean((bool)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(decimal))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "number",
-                                    Format = "decimal",
-                                    Example = defaultValue != null ? new OpenApiDecimal((decimal)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiDecimal((decimal)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(double))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "number",
-                                    Format = "double",
-                                    Example = defaultValue != null ? new OpenApiDouble((double)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiDouble((double)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(DateTime))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "string",
-                                    Format = "date-time",
-                                    Example = defaultValue != null ? new OpenApiDateTime((DateTime)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiDateTime((DateTime)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(DateOnly))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "string",
-                                    Format = "date",
-                                    Example = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(TimeOnly))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "string",
-                                    Format = "time",
-                                    Example = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(Guid))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "string",
-                                    Format = "uuid",
-                                    Example = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null,
-                                    Default = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null
-                                };
-                            }
-                            else if (propertyType == typeof(byte))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "binary",
-                                    Format = "byte array",
-                                    Example = defaultValue != null ? new OpenApiByte((byte[])defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiByte((byte[])defaultValue) : null
-                                };
-                            }
-                            else if (propertyType == typeof(byte[]))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "binary",
-                                    Format = "byte array",
-                                    Example = defaultValue != null ? new OpenApiBinary((byte[])defaultValue) : null,
-                                    Default = defaultValue != null ? new OpenApiBinary((byte[])defaultValue) : null
-                                };
-                            }
-                            else if (propertyType is { IsArray: true } || typeof(ICollection<>).IsAssignableFrom(propertyType))
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "array",
-                                    Example = defaultValue != null ? new OpenApiArray() : null,
-                                    Default = defaultValue != null ? new OpenApiArray() : null
-                                };
-                            }
-                            else if(propertyType is {IsEnum: true })
-                            {
-                                var enumNames = Enum.GetNames(propertyType);
-                                IList<IOpenApiAny> enums = enumNames.Select(name => new OpenApiString(name)).Cast<IOpenApiAny>().ToList();
-
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "string",
-                                    Enum = enums,
-                                    Description = $"Possible values: {string.Join(", ", enumNames)}",
-                                    Example = defaultValue != null ? new OpenApiArray() : null,
-                                    Default = defaultValue != null ? new OpenApiArray() : null
-                                };
-                            }
-                            else
-                            {
-                                openApiParameter.Schema = new OpenApiSchema
-                                {
-                                    Type = "string",
-                                    Example = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null,
-                                    Default = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null
                                 };
                             }
 
-                            int index = operation.Parameters.Select((item, i) => new { item, i })
-                                        .FirstOrDefault(x => x.item.Name == openApiParameter.Name)?.i ?? -1;
-
-                            if (index == -1)
-                                operation.Parameters.Add(openApiParameter);
-                            else
-                            {
-                                operation.Parameters[index] = openApiParameter;
-                            }
+                            continue;
                         }
                     }
 
-                    foreach (var response in xmlComments.Responses)
-                    {
-                        if (operation.Responses.ContainsKey(response.StatusCode)) continue;
+                    openApiParameter.In = location;
 
-                        operation.Responses.Add(response.StatusCode, new OpenApiResponse
+                    openApiParameter.Schema = propertyType switch
+                    {
+                        var t when t!.IsArray || typeof(ICollection<>).IsAssignableFrom(t) => new OpenApiSchema
                         {
-                            Description = response.Description
-                        });
+                            Type = "array",
+                            Example = defaultValue != null ? new OpenApiArray() : null,
+                            Default = defaultValue != null ? new OpenApiArray() : null
+                        },
+                        { IsEnum: true } => new OpenApiSchema
+                        {
+                            Type = "string",
+                            Enum = Enum.GetNames(propertyType).Select(name => new OpenApiString(name)).Cast<IOpenApiAny>().ToList(),
+                            Description = $"Possible values: {string.Join(", ", Enum.GetNames(propertyType))}",
+                            Example = defaultValue != null ? new OpenApiArray() : null,
+                            Default = defaultValue != null ? new OpenApiArray() : null
+                        },
+                        _ when propertyType == typeof(int) => new OpenApiSchema
+                        {
+                            Type = "integer",
+                            Format = "int32",
+                            Example = defaultValue != null ? new OpenApiInteger((int)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiInteger((int)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(long) => new OpenApiSchema
+                        {
+                            Type = "integer",
+                            Format = "int64",
+                            Example = defaultValue != null ? new OpenApiLong((long)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiLong((long)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(bool) => new OpenApiSchema
+                        {
+                            Type = "boolean",
+                            Example = defaultValue != null ? new OpenApiBoolean((bool)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiBoolean((bool)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(decimal) => new OpenApiSchema
+                        {
+                            Type = "number",
+                            Format = "decimal",
+                            Example = defaultValue != null ? new OpenApiDecimal((decimal)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiDecimal((decimal)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(double) => new OpenApiSchema
+                        {
+                            Type = "number",
+                            Format = "double",
+                            Example = defaultValue != null ? new OpenApiDouble((double)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiDouble((double)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(DateTime) => new OpenApiSchema
+                        {
+                            Type = "string",
+                            Format = "date-time",
+                            Example = defaultValue != null ? new OpenApiDateTime((DateTime)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiDateTime((DateTime)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(DateOnly) => new OpenApiSchema
+                        {
+                            Type = "string",
+                            Format = "date",
+                            Example = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(TimeOnly) => new OpenApiSchema
+                        {
+                            Type = "string",
+                            Format = "time",
+                            Example = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiDate((DateTime)defaultValue) : null
+                        },
+                        _ when propertyType == typeof(Guid) => new OpenApiSchema
+                        {
+                            Type = "string",
+                            Format = "uuid",
+                            Example = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null,
+                            Default = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null
+                        },
+                        _ when propertyType == typeof(byte) => new OpenApiSchema
+                        {
+                            Type = "binary",
+                            Format = "byte array",
+                            Example = defaultValue != null ? new OpenApiByte((byte[])defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiByte((byte[])defaultValue) : null
+                        },
+                        _ when propertyType == typeof(byte[]) => new OpenApiSchema
+                        {
+                            Type = "binary",
+                            Format = "byte array",
+                            Example = defaultValue != null ? new OpenApiBinary((byte[])defaultValue) : null,
+                            Default = defaultValue != null ? new OpenApiBinary((byte[])defaultValue) : null
+                        },
+                        _ => new OpenApiSchema
+                        {
+                            Type = "string",
+                            Example = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null,
+                            Default = defaultValue != null ? new OpenApiString(defaultValue.ToString()) : null
+                        }
+                    };
+
+                    int index = operation.Parameters.Select((item, i) => new { item, i })
+                                .FirstOrDefault(x => x.item.Name == openApiParameter.Name)?.i ?? -1;
+
+                    if (index == -1)
+                        operation.Parameters.Add(openApiParameter);
+                    else
+                    {
+                        operation.Parameters[index] = openApiParameter;
                     }
+                }
+
+                foreach (var response in xmlComments.Responses)
+                {
+                    if (operation.Responses.ContainsKey(response.StatusCode)) continue;
+
+                    operation.Responses.Add(response.StatusCode, new OpenApiResponse
+                    {
+                        Description = response.Description
+                    });
                 }
             }
             catch (Exception exception)

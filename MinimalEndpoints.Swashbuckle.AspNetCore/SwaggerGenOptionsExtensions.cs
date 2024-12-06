@@ -12,9 +12,9 @@ public static class SwaggerGenOptionsExtensions
     /// <param name="files">A collection of files that contains XML Comments</param>
     /// </param>
     public static void IncludeXmlComments(this SwaggerGenOptions swaggerGenOptions, IEnumerable<string> files,
-        EndpointDescriptors descriptors, bool caseSensitiveRouteMatching = true)
+        bool caseSensitiveRouteMatching = true)
     {
-        swaggerGenOptions.DocumentFilter<EndpointXmlCommentsDocumentFilter>(files, descriptors);
+        swaggerGenOptions.DocumentFilter<EndpointXmlCommentsDocumentFilter>(files);
         if (!caseSensitiveRouteMatching)
             swaggerGenOptions.DocumentFilter<RouteTemplateCaseDocumentFilter>();
     }

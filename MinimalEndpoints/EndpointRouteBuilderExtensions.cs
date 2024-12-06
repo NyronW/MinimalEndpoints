@@ -41,11 +41,9 @@ public static class EndpointRouteBuilderExtensions
         var services = scope.ServiceProvider;
 
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("MinimalEndpoint");
-
         var endpointDescriptors = builder.ServiceProvider.GetRequiredService<EndpointDescriptors>();
-
-        var definitions = services.GetServices<IEndpointDefinition>();
-        var endpoints = services.GetServices<IEndpoint>();
+        var definitions = services.GetServices<IEndpointDefinition>().ToList();
+        var endpoints = services.GetServices<IEndpoint>().ToList();
 
         var serviceConfig = new EndpointConfiguration
         {
@@ -58,23 +56,25 @@ public static class EndpointRouteBuilderExtensions
 
         logger.LogTrace("Executing IEndpointDefinition implementations");
 
-        foreach (var definition in definitions)
+        for (int i = 0; i < definitions.Count; i++)
         {
+            IEndpointDefinition? definition = definitions[i];
             var name = definition.GetType().Name;
 
             try
             {
                 definition.MapEndpoint(builder);
 
-                MethodInfo handlerMethodInfo = definition.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-                                .FirstOrDefault(m => m.GetCustomAttribute<HandlerMethodAttribute>() != null)!;
+                var handlerMethodInfo = definition.GetType()
+                     .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                     .FirstOrDefault(m => m.IsDefined(typeof(HandlerMethodAttribute), inherit: false));
 
                 if (handlerMethodInfo != null)
                 {
                     var pattern = "";
                     var httpMethod = "";
 
-                    var endpointDataSource = builder.DataSources.Last(e => e.Endpoints.Any(m => m is RouteEndpoint));
+                    var endpointDataSource = builder.DataSources.LastOrDefault(e => e.Endpoints.Any(m => m is RouteEndpoint));
                     if (endpointDataSource != null)
                     {
                         var route = (RouteEndpoint)endpointDataSource.Endpoints.Last(); //assume that last entry is the current definition
@@ -102,8 +102,9 @@ public static class EndpointRouteBuilderExtensions
         }
 
         logger.LogTrace("Mapping IEndpoint implementations");
-        foreach (var endpoint in endpoints)
+        for (int idx = 0; idx < endpoints.Count; idx++)
         {
+            IEndpoint? endpoint = endpoints[idx];
             if (endpoint is IEndpointDefinition _) continue;
             var name = endpoint.GetType().Name;
 
@@ -138,9 +139,6 @@ public static class EndpointRouteBuilderExtensions
                     .FirstOrDefault(m => m.IsDefined(typeof(HandlerMethodAttribute), inherit: false))
                     ?? endpoint.Handler.Method;
 
-                //var parameterTypes = string.Join(",", handlerMethodInfo.GetParameters()
-                //        .Select(p => GetParameterTypeName(p.ParameterType)));
-                //var handlerMethodName = $"{handlerMethodInfo.DeclaringType!.FullName}.{handlerMethodInfo.Name}({parameterTypes})";
                 var sb = StringBuilderPool.Get();
                 try
                 {
@@ -175,10 +173,15 @@ public static class EndpointRouteBuilderExtensions
                 });
                 mappedCount++;
 
+                mapping.WithMetadata(new HttpMethodMetadata(methods))
+                    .WithDisplayName(name);
+
                 if (!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
                 {
                     mapping.WithName(tagAttr.RouteName);
+                    mapping.WithMetadata(new EndpointNameMetadata(tagAttr.RouteName));
                 }
+
 
                 var globalProduces = serviceConfig.Filters.OfType<ProducesResponseTypeAttribute>();
 
@@ -208,6 +211,7 @@ public static class EndpointRouteBuilderExtensions
                     }
 
                     mapping.Produces(attr.StatusCode, responseType: attr.Type);
+                    mapping.WithMetadata(new ProducesResponseTypeMetadata(attr.StatusCode, attr.Type));    
                 }
 
                 foreach (var filter in serviceConfig.EndpointFilters)

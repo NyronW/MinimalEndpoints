@@ -62,29 +62,30 @@ public static class ServiceCollectionExtensions
     {
         if (assemblies == null || !assemblies.Any())
         {
-            if (scanAssemblies)
-                assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            else if (entryAssembly is { })
-                assemblies = [entryAssembly];
+            assemblies = scanAssemblies
+                ? AppDomain.CurrentDomain.GetAssemblies()
+                : entryAssembly is not null ? [entryAssembly] : Array.Empty<Assembly>();
         }
-
-        assemblies = assemblies?.Distinct().ToArray() ?? [];
 
         var interfaceTypes = new[] { typeof(IEndpoint), typeof(IEndpointDefinition) };
 
-        foreach (var assembly in assemblies)
+        List<Assembly> assemblyList = assemblies.ToList();
+        for (int i = 0; i < assemblyList.Count; i++)
         {
-            var exportedTypes = assembly.ExportedTypes;
+            Assembly? assembly = assemblyList[i];
+            var definedTypes = assembly.DefinedTypes.ToList();
 
-            foreach (var type in exportedTypes)
+            for (int n = 0; n < definedTypes.Count; n++)
             {
+                TypeInfo? type = definedTypes[n];
                 if (type.IsAbstract || !type.IsClass ||
-                        !type.DerivedFromAny(typeof(IEndpoint), typeof(IEndpointDefinition)))
+                        !type.DerivedFromAny([typeof(IEndpoint), typeof(IEndpointDefinition)]))
                     continue;
 
                 if (services.Any(sd => sd.ImplementationType == type)) continue;
 
-                foreach (var @interface in type.GetInterfaces())
+                var interfaces = type.GetInterfaces();
+                foreach (var @interface in interfaces)
                 {
                     if (!interfaceTypes.Contains(@interface))
                         continue;

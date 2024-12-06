@@ -128,104 +128,93 @@ public class EndpointHandler
 
     private async ValueTask<object?> BindParameter(ParameterInfo param, IServiceProvider sp, HttpRequest request, CancellationToken cancellationToken)
     {
-        object? value = null;
-        object? requestBodyObject = null!;
-
         try
         {
             if (param.ParameterType == typeof(IFormFile) || param.ParameterType == typeof(IFormFileCollection))
             {
                 var files = request.ReadFormFiles(param.Name!);
-                if (files is { })
-                    value = files is { Count: 1 } ? files[0] : (IFormFileCollection)files;
-            }
-            else if (param.ParameterType == typeof(HttpContext))
-            {
-                value = request.HttpContext;
-            }
-            else if (param.ParameterType == typeof(HttpRequest))
-            {
-                value = request;
-            }
-            else if (param.ParameterType == typeof(CancellationToken))
-            {
-                value = cancellationToken;
-            }
-            else if (param.GetCustomAttribute<FromServicesAttribute>() != null)
-            {
-                value = sp.GetRequiredService(param.ParameterType);
-            }
-            else if (param.GetCustomAttribute<FromRouteAttribute>() is { } fromRouteAttribute)
-            {
-                value = request.RouteValues[fromRouteAttribute.Name ?? param.Name!]?.ToString();
-                if (value is { })
-                    value = ConvertParameter(value.ToString()!, param.ParameterType);
-            }
-            else if (param.GetCustomAttribute<FromQueryAttribute>() is { } fromQueryAttribute)
-            {
-                value = request.Query[fromQueryAttribute.Name ?? param.Name!].FirstOrDefault();
-                if (value is { })
-                    value = ConvertParameter(value.ToString()!, param.ParameterType);
-            }
-            else if (param.GetCustomAttribute<FromHeaderAttribute>() is { } fromHeaderAttribute)
-            {
-                value = request.Headers[fromHeaderAttribute.Name ?? param.Name!].FirstOrDefault();
-                if (value is { })
-                    value = ConvertParameter(value.ToString()!, param.ParameterType);
-            }
-            else
-            {
-                var routeVal = request.RouteValues[param.Name!]?.ToString();
-                if (!string.IsNullOrEmpty(routeVal) && routeVal == $"{{{param.Name!}}}") routeVal = null!;
-
-                string stringValue = routeVal! ??
-                                     request.Query[param.Name!].FirstOrDefault()! ??
-                                     request.Headers[param.Name!].FirstOrDefault()!;
-
-                if (!string.IsNullOrEmpty(stringValue))
-                    value = ConvertParameter(stringValue, param.ParameterType);
+                return files?.Count == 1 ? files[0] : files;
             }
 
-            if (value == null && param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
+            if (param.ParameterType == typeof(HttpContext)) return request.HttpContext;
+            if (param.ParameterType == typeof(HttpRequest)) return request;
+            if (param.ParameterType == typeof(CancellationToken)) return cancellationToken;
+
+            if (param.GetCustomAttribute<FromServicesAttribute>() != null)
             {
-                if (param.HasDefaultValue)
+                return sp.GetRequiredService(param.ParameterType);
+            }
+
+            if (param.GetCustomAttribute<FromRouteAttribute>() is { } fromRouteAttribute)
+            {
+                if (request.RouteValues.TryGetValue(fromRouteAttribute.Name ?? param.Name!, out var routeValue) && routeValue is string routeString)
                 {
-                    value = param.DefaultValue!;
-                }
-                else
-                {
-                    _logger.LogDebug("The value for parameter '{ParameterName}' was not found in the request and does not have a default value.", param.Name);
-                    throw new InvalidOperationException($"The value for parameter '{param.Name}' was not found in the request and does not have a default value.");
+                    return ConvertParameter(routeString, param.ParameterType);
                 }
             }
 
-            if (value == null && (!param.ParameterType.IsValueType || Nullable.GetUnderlyingType(param.ParameterType) != null))
+            if (param.GetCustomAttribute<FromQueryAttribute>() is { } fromQueryAttribute)
             {
-                if (requestBodyObject == null && request is { ContentLength: > 0, ContentType.Length: > 0 })
+                if (request.Query.TryGetValue(fromQueryAttribute.Name ?? param.Name!, out var queryValue) && queryValue.Count > 0)
                 {
-                    if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        requestBodyObject = await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken);
-                    }
-                    else if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
-                    {
-                        requestBodyObject = await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken);
-                    }
+                    return ConvertParameter(queryValue[0]!, param.ParameterType);
                 }
-                else
-                {
-                    _logger.LogDebug("No data was found in the request body or content type '{ContentType}' is not supported", request.ContentType);
-                }
-
-                value = requestBodyObject ?? (param.HasDefaultValue ? param.DefaultValue : null);
             }
+
+            if (param.GetCustomAttribute<FromHeaderAttribute>() is { } fromHeaderAttribute)
+            {
+                if (request.Headers.TryGetValue(fromHeaderAttribute.Name ?? param.Name!, out var headerValue) && headerValue.Count > 0)
+                {
+                    return ConvertParameter(headerValue[0]!, param.ParameterType);
+                }
+            }
+
+            if (request.RouteValues.TryGetValue(param.Name!, out var routeVal) && routeVal is string routeStr && routeStr != $"{{{param.Name!}}}")
+            {
+                return ConvertParameter(routeStr, param.ParameterType);
+            }
+
+            if (request.Query.TryGetValue(param.Name!, out var queryStringValue) && queryStringValue.Count > 0)
+            {
+                return ConvertParameter(queryStringValue[0]!, param.ParameterType);
+            }
+
+            if (request.Headers.TryGetValue(param.Name!, out var headerStringValue) && headerStringValue.Count > 0)
+            {
+                return ConvertParameter(headerStringValue[0]!, param.ParameterType);
+            }
+
+            // Handle value type defaults
+            if (param.ParameterType.IsValueType && Nullable.GetUnderlyingType(param.ParameterType) == null)
+            {
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("The value for parameter '{ParameterName}' was not found in the request, attempting to add default value.", param.Name);
+
+                return param.HasDefaultValue ? param.DefaultValue : Activator.CreateInstance(param.ParameterType);
+            }
+
+            // Handle reference types or nullable value types
+            if (request.ContentLength > 0 && !string.IsNullOrEmpty(request.ContentType))
+            {
+                if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken);
+                }
+                
+                if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken);
+                }
+            }
+          
+            _logger.LogDebug("No value found for parameter '{ParameterName}'", param.Name);
+            return param.HasDefaultValue ? param.DefaultValue : null;
         }
         catch (Exception pex)
         {
             _logger.LogError(pex, "An error occured while trying to bind value for parameter: {ParameterName}", param.Name);
+            return null;
         }
-
-        return value;
     }
 
     private object? ConvertParameter(string value, Type type)

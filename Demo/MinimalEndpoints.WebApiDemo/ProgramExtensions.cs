@@ -10,7 +10,6 @@ using MinimalEndpoints.WebApiDemo.Services;
 using MinimalEndpoints.Swashbuckle.AspNetCore;
 using System.Text;
 using System.Threading.RateLimiting;
-using MinimalEndpoints.WebApiDemo.Endpoints.Todo;
 using MinimalEndpoints.Extensions.Http;
 using MinimalEndpoints.Authorization;
 
@@ -22,6 +21,8 @@ public static class ProgramExtensions
     {
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
+
+        builder.Services.AddMinimalOpenApi();
         builder.Services.AddMinimalEndpoints();
 
         builder.Services.AddCustomerServices(); //Add services for support class library
@@ -81,10 +82,7 @@ public static class ProgramExtensions
             //foreach (var xmlFile in xmlFiles)
             //    c.IncludeXmlComments(xmlFile);
 
-            var descriptors = builder.Services.BuildServiceProvider()
-                .GetRequiredService<EndpointDescriptors>();
-
-            c.IncludeXmlComments(xmlFiles, descriptors);
+            c.IncludeXmlComments(xmlFiles);
 
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
