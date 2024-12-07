@@ -36,7 +36,7 @@ public class GetAllCustomers : EndpointBase, IEndpoint
     [HandlerMethod]
     private IResult GetCustomers([FromQuery] CustomerType category,  [FromQuery] int pageNo, [FromQuery(Name ="size")] int pageSize, [FromHeader(Name ="x-foo-name")] string name, [FromQuery] bool? showInactive)
     {
-        var customers = _customerRepository.GetAll().Skip((pageNo - 1) * pageSize).Take(pageSize);
+        var customers = _customerRepository.Get(pageNo   , pageSize);
 
         _someService.Foo();
 

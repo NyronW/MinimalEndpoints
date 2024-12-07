@@ -62,15 +62,24 @@ public class Response
 
 public class Endpoint : Endpoint<Request>
 {
+    private readonly IValidator<Request> _validator;
+
+    public Endpoint(IValidator<Request> validator)
+    {
+        _validator = validator;
+    }
+
     public override void Configure()
     {
         Post("/benchmark/ok/{id}");
         AllowAnonymous();
     }
 
-    public override Task HandleAsync(Request request, CancellationToken ct)
+    public override async Task HandleAsync(Request request, CancellationToken ct)
     {
-        return SendAsync(new Response()
+        await _validator.ValidateAsync(request);
+
+        await SendAsync(new Response()
         {
             Id = request.Id,
             Name = request.FirstName + " " + request.LastName,

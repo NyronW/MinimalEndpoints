@@ -74,18 +74,18 @@ public class Endpoint : IEndpoint
 
     public Delegate Handler => SendAsync;
 
-    public async Task<Response> SendAsync(Request request, CancellationToken cancellationToken = default)
+    public async Task<IResult> SendAsync(Request request, CancellationToken ct)
     {
         await _validator.ValidateAsync(request);
 
-        return new Response()
+        return Results.Ok(new Response()
         {
             Id = request.Id,
             Name = request.FirstName + " " + request.LastName,
             Age = request.Age,
             PhoneNumber = request.PhoneNumbers?.FirstOrDefault(),
             Email = request.Email
-        };
+        });
     }
 }
 
