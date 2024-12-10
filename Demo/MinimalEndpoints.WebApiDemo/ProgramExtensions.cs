@@ -22,8 +22,8 @@ public static class ProgramExtensions
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
 
-        builder.Services.AddMinimalOpenApi();
         builder.Services.AddMinimalEndpoints();
+        builder.Services.AddMinimalEndpointSwaggerGen();
 
         builder.Services.AddCustomerServices(); //Add services for support class library
 

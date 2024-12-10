@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
-using MinimalEndpoints.Extensions;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 
@@ -24,7 +23,7 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
             .ToArray();
 
         var logger = _endpointDescriptors.ServiceProvider.GetRequiredService<ILogger<EndpointXmlCommentsDocumentFilter>>();
-
+        
         foreach (var endpointType in endpointTypes)
         {
             try
@@ -36,13 +35,13 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
                 if (!_xmlComments.TryGetValue($"M:{descriptor.HandlerIdentifier}", out var xmlComments))
                     continue;
 
-                var operationType = descriptor.HttpMethod.ToOpenApiOperationMethod();
                 if (!swaggerDoc.Paths.TryGetValue(descriptor.Pattern, out var pathItem))
                 {
                     logger.LogDebug("Path {Pattern} not found in the swagger document", descriptor.Pattern);
                     continue;
                 }
 
+                var operationType = descriptor.HttpMethod.ToOpenApiOperationMethod();
                 var operation = pathItem.Operations.FirstOrDefault(o => o.Key == operationType).Value;
                 if (operation == null) continue;
 
@@ -56,7 +55,8 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
 
                 var undocumentedParams = handlerMethodInfo.GetParameters()
                         .Where(p => !xmlComments.Parameters.Any(cp => p.Name == cp.Name)
-                        && p.ParameterType != typeof(CancellationToken)).ToArray();
+                        && p.ParameterType != typeof(CancellationToken) && p.ParameterType != typeof(HttpRequest)
+                        && p.GetCustomAttribute<FromServicesAttribute>() == null).ToArray();
 
                 if (undocumentedParams.Length != 0)
                 {

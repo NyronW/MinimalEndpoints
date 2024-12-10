@@ -12,7 +12,7 @@ public class RouteTemplateCaseDocumentFilter(EndpointDescriptors endpointDescrip
 
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {
-        var logger = _endpointDescriptors.ServiceProvider.GetRequiredService<ILogger<EndpointXmlCommentsDocumentFilter>>();
+        var logger = _endpointDescriptors.ServiceProvider.GetRequiredService<ILogger<RouteTemplateCaseDocumentFilter>>();
         
         try
         {

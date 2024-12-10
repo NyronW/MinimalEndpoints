@@ -9,7 +9,11 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
     /// Creates a new customer 
     /// </summary>
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(Customer))]
-    [Accept(typeof(CustomerDto), "application/json", AdditionalContentTypes = ["application/xml"])]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [Accept(typeof(CustomerWrapper<CustomerDto>), "application/json", AdditionalContentTypes = ["application/xml"])]
     [Endpoint(TagName = "Customer", OperationId = nameof(CreateCustomer))]
     public class CreateCustomer : EndpointBase, IEndpoint
     {
@@ -36,11 +40,12 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
         /// </summary>
         /// <param name="customerDto">New customer to create</param>
         /// <returns></returns>
-        public async Task<IResult> HandleRequestAsync(CustomerDto customerDto, HttpRequest httpRequest, CancellationToken cancellationToken = default)
+        [HandlerMethod]
+        public async Task<IResult> HandleRequestAsync(CustomerWrapper<CustomerDto> customerDto, [FromHeader(Name ="X-FOO")] string clientId, HttpRequest httpRequest, CancellationToken cancellationToken = default)
         {
             try
             {
-                var customer = await _repository.CreateAsync(customerDto);
+                var customer = await _repository.CreateAsync(customerDto.Customer);
 
                 return CreatedAtRoute(nameof(GetCustomerById), new { id = customer.Id }, customer);
             }
@@ -66,4 +71,10 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
             return Task.FromResult(errors.AsEnumerable());
         }
     }
+}
+
+public class CustomerWrapper<TCustomer> where TCustomer : class
+{
+    public int Seq { get; set; }
+    public TCustomer Customer { get; set; }
 }

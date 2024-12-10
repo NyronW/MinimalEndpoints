@@ -22,6 +22,9 @@ Either commands, from Package Manager Console or .NET Core CLI, will allow downl
 First, configure MinimalEndpoints to know where the commands are located, in the startup of your application:
 
 ```csharp
+//add minimal endpoint swagger support
+builder.Services.AddMinimalEndpointSwaggerGen();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -45,14 +48,14 @@ builder.Services.AddSwaggerGen(c =>
     //Set the comments path for the Swagger JSON and UI.
     var xmlFiles = Directory.GetFiles(AppContext.BaseDirectory)
         .Where(f => Path.GetExtension(f) == ".xml");
-    
-    //Get an instance of the EndpointDescriptors for DI container
-    var descriptors = builder.Services.BuildServiceProvider()
-        .GetRequiredService<EndpointDescriptors>();
+  
 
-    c.IncludeXmlComments(xmlFiles, descriptors);
+    c.IncludeXmlComments(xmlFiles);
 
 });
 
 ```
 
+### V1.1 Breaking Changes
+* Requires that AddMinimalEndpointSwaggerGen() method be called on the IServiceCollection interface during application startup.
+* Swagger UI IncludeXmlComments extension method no longer accepts an instance of EndpointDescriptor;

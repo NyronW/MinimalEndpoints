@@ -10,13 +10,16 @@ public static class XmlCommentsReader
 
         foreach (var xmlPath in xmlPaths)
         {
+            if (string.IsNullOrEmpty(xmlPath)) continue;
+
             var xdoc = XDocument.Load(xmlPath);
 
             foreach (var member in xdoc.Descendants("member"))
             {
                 var name = member.Attribute("name")?.Value;
-                if (string.IsNullOrEmpty(name))
-                    continue;
+
+                if (string.IsNullOrEmpty(name)) continue;
+                if (comments.ContainsKey(name)) continue;
 
                 var summary = member.Element("summary")?.Value;
                 var remarks = member.Element("remarks")?.Value;
@@ -24,7 +27,7 @@ public static class XmlCommentsReader
                     .Select(p => new XmlCommentParameter
                     {
                         Name = p.Attribute("name")?.Value!,
-                        Description = p.Value.Trim()
+                        Description = p.Value
                     })
                     .ToList();
 
@@ -32,21 +35,18 @@ public static class XmlCommentsReader
                     .Select(r => new XmlCommentResponse
                     {
                         StatusCode = r.Attribute("code")?.Value!,
-                        Description = r.Value.Trim()
+                        Description = r.Value
                     })
                     .ToList();
 
-                if (!comments.ContainsKey(name))
+                comments.Add(name, new XmlComments
                 {
-                    comments.Add(name, new XmlComments
-                    {
-                        Name = name,
-                        Summary = summary!,
-                        Description = remarks!,
-                        Parameters = parameters,
-                        Responses = responses
-                    });
-                }
+                    Name = name,
+                    Summary = summary!,
+                    Description = remarks!,
+                    Parameters = parameters,
+                    Responses = responses
+                });
             }
         }
 

@@ -288,26 +288,39 @@ public static class EndpointRouteBuilderExtensions
 
     private static string GetParameterTypeName(Type type)
     {
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+        if (type.IsGenericType)
         {
-            //Type underlyingType = Nullable.GetUnderlyingType(type)!;
-            //return $"System.Nullable{{{underlyingType.FullName?.Replace("+", ".")}}}";
-
-            var underlyingType = Nullable.GetUnderlyingType(type)!;
-            var underlyingTypeName = underlyingType.FullName;
-
-            // Avoid unnecessary Replace calls if '+' doesn't exist
-            if (underlyingTypeName?.Contains('+') == true)
+            // Handle nullable types specifically
+            if (type.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                underlyingTypeName = underlyingTypeName.Replace("+", ".");
+                var underlyingType = Nullable.GetUnderlyingType(type)!;
+                var underlyingTypeName = underlyingType.FullName;
+
+                // Replace '+' with '.' for nested types
+                if (underlyingTypeName?.Contains('+') == true)
+                {
+                    underlyingTypeName = underlyingTypeName.Replace("+", ".");
+                }
+
+                return $"System.Nullable{{{underlyingTypeName}}}";
             }
 
-            return $"System.Nullable{{{underlyingTypeName}}}";
+            // Handle other generic types
+            var genericTypeDefinition = type.GetGenericTypeDefinition();
+            var genericTypeName = genericTypeDefinition.FullName;
+
+            if (genericTypeName?.Contains('+') == true)
+            {
+                genericTypeName = genericTypeName.Replace("+", ".");
+            }
+
+            // Append generic arguments
+            var genericArguments = type.GetGenericArguments();
+            var genericArgumentNames = string.Join(",", genericArguments.Select(GetParameterTypeName));
+            return $"{genericTypeName![..genericTypeName.IndexOf('`')]}{{{genericArgumentNames}}}";
         }
 
         // Handle non-generic types
-        //return type.FullName!.Replace("+", ".");
-
         var fullName = type.FullName;
         if (fullName?.Contains('+') == true)
         {
@@ -316,6 +329,7 @@ public static class EndpointRouteBuilderExtensions
 
         return fullName!;
     }
+
 
     private static (bool, MethodInfo) IsMapEndpointOverridden(Type endpointType)
     {

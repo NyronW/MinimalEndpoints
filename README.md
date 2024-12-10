@@ -730,5 +730,10 @@ Update abstract method definition to accept a CancellationToken parameter to the
  * Added support for applying rate limiting to all minimal endpoint implementations
 
   ### V1.3.0 Changes
- * Added extension methods for authorization policy builber
+ * Added extension methods for authorization policy builder
+
+ ### V1.4.0 Changes
+ * Added IEndpointDefinition interface to allow greater flexibility when defining API endpoints.
+ * Improve Swagger XML support by supporting more datatypes
+
 
