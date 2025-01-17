@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace MinimalEndpoints.Swashbuckle.AspNetCore;
 
@@ -23,7 +24,7 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
             .ToArray();
 
         var logger = _endpointDescriptors.ServiceProvider.GetRequiredService<ILogger<EndpointXmlCommentsDocumentFilter>>();
-        
+
         foreach (var endpointType in endpointTypes)
         {
             try
@@ -35,7 +36,10 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
                 if (!_xmlComments.TryGetValue($"M:{descriptor.HandlerIdentifier}", out var xmlComments))
                     continue;
 
-                if (!swaggerDoc.Paths.TryGetValue(descriptor.Pattern, out var pathItem))
+                var pattern = !descriptor.Pattern.Contains(':') && !descriptor.Pattern.StartsWith('~') ? descriptor.Pattern :
+                    Regex.Replace(descriptor.Pattern, @"^~|:\w+", string.Empty);
+
+                if (!swaggerDoc.Paths.TryGetValue(pattern, out var pathItem))
                 {
                     logger.LogDebug("Path {Pattern} not found in the swagger document", descriptor.Pattern);
                     continue;
@@ -81,9 +85,10 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
                     if (paramInfo.GetCustomAttribute<FromServicesAttribute>() != null)
                         continue;
 
-                    var isNullable = propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
+                    var isNullable = IsParameterNullable(paramInfo);;
 
-                    if (isNullable)
+                    if (isNullable && propertyType.IsGenericType 
+                            && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                     {
                         propertyType = Nullable.GetUnderlyingType(propertyType);
                     }
@@ -291,5 +296,22 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
                 logger.LogWarning(exception, "An error occured while applying xml comments to the swagger document");
             }
         }
+    }
+
+    private bool IsParameterNullable(ParameterInfo parameter)
+    {
+        // Handle value types (they are nullable if they are Nullable<T>)
+        if (!parameter.ParameterType.IsValueType)
+        {
+            // Reference types
+            var nullableAttribute = parameter
+                .GetCustomAttributes(typeof(System.Runtime.CompilerServices.NullableAttribute), inherit: true)
+                .FirstOrDefault() as System.Runtime.CompilerServices.NullableAttribute;
+
+            return nullableAttribute?.NullableFlags.FirstOrDefault() == 2; // 2 means nullable reference type
+        }
+
+        // Nullable value types
+        return Nullable.GetUnderlyingType(parameter.ParameterType) != null;
     }
 }

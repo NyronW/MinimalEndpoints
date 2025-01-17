@@ -114,12 +114,12 @@ public static class EndpointRouteBuilderExtensions
 
                 var pattern = endpoint.Pattern;
 
-                if (!string.IsNullOrEmpty(serviceConfig.DefaultRoutePrefix))
+                if (!pattern.StartsWith('~') && !string.IsNullOrEmpty(serviceConfig.DefaultRoutePrefix))
                     pattern = $"{serviceConfig.DefaultRoutePrefix.TrimEnd('/')}/{pattern.TrimStart('/')}";
 
                 var tagAttr = (EndpointAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EndpointAttribute)).FirstOrDefault();
 
-                if (!string.IsNullOrWhiteSpace(tagAttr?.RoutePrefixOverride))
+                if (!pattern.StartsWith('~') && !string.IsNullOrWhiteSpace(tagAttr?.RoutePrefixOverride))
                 {
                     pattern = $"{tagAttr.RoutePrefixOverride.TrimEnd('/')}/{endpoint.Pattern.TrimStart('/')}";
                 }

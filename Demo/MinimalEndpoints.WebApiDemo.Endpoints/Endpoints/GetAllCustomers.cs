@@ -18,7 +18,7 @@ public class GetAllCustomers : EndpointBase, IEndpoint
         _someService = someService;
     }
 
-    public string Pattern => "/customers";
+    public string Pattern => "~/api-prod/customers";
 
     public HttpMethod Method => HttpMethod.Get;
 
