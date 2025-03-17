@@ -223,6 +223,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
           .AppendLineWithTab(3, "ServiceProvider = builder.ServiceProvider")
           .AppendLineWithTab(2, "};");
         sb.AppendLineWithTab(2, "configuration?.Invoke(serviceConfig);");
+        sb.AppendLineWithTab(2, "var globalProduces = serviceConfig.Filters.OfType<ProducesResponseTypeAttribute>();");
 
         sb.NewLine();
 
@@ -266,41 +267,10 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             foreach (var param in parameters)
             {
                 var paramType = param.Type;
-                string formattedTypeName;
-
-                // Handle generic types (like Nullable<T>)
-                if (paramType is INamedTypeSymbol namedType && namedType.IsGenericType)
-                {
-                    var genericTypeDef = namedType.ConstructedFrom;
-                    var genericArgs = namedType.TypeArguments;
-
-                    // Get the generic type name without the arity (`1) suffix
-                    var baseTypeName = genericTypeDef.ToDisplayString(new SymbolDisplayFormat(
-                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                        genericsOptions: SymbolDisplayGenericsOptions.None));
-
-                    // Remove the backtick part if present
-                    int tickIndex = baseTypeName.IndexOf('`');
-                    if (tickIndex > 0)
-                        baseTypeName = baseTypeName.Substring(0, tickIndex);
-
-                    // Format generic arguments recursively (they could be generic too)
-                    var argStrings = genericArgs.Select(arg =>
-                        arg is INamedTypeSymbol argNamed && argNamed.IsGenericType
-                            ? FormatGenericType(argNamed)
-                            : arg.ToDisplayString().Replace("+", "."));
-
-                    formattedTypeName = $"{baseTypeName}{{{string.Join(",", argStrings)}}}";
-                }
-                else
-                {
-                    formattedTypeName = paramType.ToDisplayString().Replace("+", ".");
-                }
-
-                formattedParameters.Add(formattedTypeName);
+                formattedParameters.Add(GetFullTypeNameWithBraces(paramType));
             }
 
-            // Create the full method name with properly formatted parameters
+            // Create the handler method name with properly formatted parameters
             var fullTypeName = endpoint.EndpointType.ToDisplayString().Replace("+", ".");
             var handlerMethodName = $"{fullTypeName}.{endpoint.HandlerMethod.Name}({string.Join(",", formattedParameters)})";
 
@@ -425,12 +395,94 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             sb.AppendFormattedLineWithTab(2, "mapping_{0}.WithMetadata(new HttpMethodMetadata(methods_{0}))", i)
               .AppendFormattedLineWithTab(3, ".WithDisplayName(name_{0});", i);
 
+            sb.AppendLineWithTab(2, "foreach (var filter in serviceConfig.EndpointFilters)")
+              .AppendLineWithTab(2, "{")
+              .AppendFormattedLineWithTab(3, "mapping_{0}.AddEndpointFilter(filter);", i)
+              .AppendLineWithTab(2, "}")
+              .NewLine();
+
+            // Get ProducesResponseTypeAttribute from endpoint class
+            sb.AppendFormattedLineWithTab(2, "var producesRespAttributes_{0} = new List<ProducesResponseTypeAttribute>();", i);
+            
+            // Add attributes from the endpoint class
+            var producesAttrs = endpoint.EndpointType.GetAttributes()
+                .Where(a => a.AttributeClass?.Name == "ProducesResponseTypeAttribute")
+                .ToList();
+                
+            if (producesAttrs.Any())
+            {
+                sb.AppendLineWithTab(2, "// Add response type attributes from endpoint class");
+                foreach (var attr in producesAttrs)
+                {
+                    // Extract status code from attribute constructor
+                    var statusCode = attr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "200";
+                    
+                    // Extract type from attribute constructor (if available)
+                    var typeArg = attr.ConstructorArguments.Count() > 1 
+                        ? attr.ConstructorArguments[1].Value as ITypeSymbol 
+                        : null;
+                    
+                    string ptypeName = "typeof(void)";
+                    bool isVoidType = false;
+                    
+                    if (typeArg != null)
+                    {
+                        if (typeArg.Name == "Void" && typeArg.ContainingNamespace?.Name == "System")
+                        {
+                            isVoidType = true;
+                            ptypeName = "typeof(void)";
+                        }
+                        else
+                        {
+                            ptypeName = $"typeof({typeArg.ToDisplayString()})";
+                        }
+                    }
+                    
+                    // Generate code to create the attribute
+                    sb.AppendFormattedLineWithTab(2, "producesRespAttributes_{0}.Add(new ProducesResponseTypeAttribute({1}, {2}));", 
+                        i, ptypeName, statusCode);
+                }
+                sb.NewLine();
+            }
+            
+            // Add global produces attributes
+            sb.AppendLineWithTab(2, "// Add global response type attributes");
+            sb.AppendFormattedLineWithTab(2, "if (globalProduces.Any()) producesRespAttributes_{0}.AddRange(globalProduces);", i);
+            sb.NewLine();
+            
+            // Process each attribute
+            sb.AppendLineWithTab(2, "// Apply response type attributes to the endpoint");
+            sb.AppendFormattedLineWithTab(2, "foreach (var attr in producesRespAttributes_{0})", i);
+            sb.AppendLineWithTab(2, "{");
+            sb.AppendLineWithTab(3, "if (attr.Type == typeof(void))");
+            sb.AppendLineWithTab(3, "{");
+            sb.AppendLineWithTab(4, "if (attr.StatusCode == StatusCodes.Status400BadRequest)");
+            sb.AppendLineWithTab(4, "{");
+            sb.AppendFormattedLineWithTab(5, "mapping_{0}.ProducesValidationProblem();", i);
+            sb.AppendLineWithTab(5, "continue;");
+            sb.AppendLineWithTab(4, "}");
+            sb.NewLine();
+            sb.AppendLineWithTab(4, "if (attr.StatusCode == StatusCodes.Status500InternalServerError)");
+            sb.AppendLineWithTab(4, "{");
+            sb.AppendFormattedLineWithTab(5, "mapping_{0}.ProducesProblem(attr.StatusCode);", i);
+            sb.AppendLineWithTab(5, "continue;");
+            sb.AppendLineWithTab(4, "}");
+            sb.NewLine();
+            sb.AppendFormattedLineWithTab(4, "mapping_{0}.Produces(attr.StatusCode, responseType: null);", i);
+            sb.AppendLineWithTab(4, "continue;");
+            sb.AppendLineWithTab(3, "}");
+            sb.NewLine();
+            sb.AppendFormattedLineWithTab(3, "mapping_{0}.Produces(attr.StatusCode, responseType: attr.Type);", i);
+            sb.AppendFormattedLineWithTab(3, "mapping_{0}.WithMetadata(new ProducesResponseTypeMetadata(attr.StatusCode, attr.Type));", i);
+            sb.AppendLineWithTab(2, "}");
+            sb.NewLine();
+
             sb.NewLine();
         }
 
         sb.NewLine();
-        sb.AppendLineWithTab(2, "return builder;");
-        sb.AppendLineWithTab(1, "}");
+        sb.AppendLineWithTab(2, "return builder;")
+          .AppendLineWithTab(1, "}");
 
         sb.AppendLine("}");
 
@@ -551,6 +603,76 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
                 : arg.ToDisplayString().Replace("+", "."));
 
         return $"{baseTypeName}{{{string.Join(",", argStrings)}}}";
+    }
+
+    // Add this helper method to the class:
+    private static string GetFullTypeNameWithBraces(ITypeSymbol type)
+    {
+        // Handle primitive types by getting their full name
+        if (type.SpecialType != SpecialType.None)
+        {
+            // Map special types to their full names
+            switch (type.SpecialType)
+            {
+                case SpecialType.System_Boolean: return "System.Boolean";
+                case SpecialType.System_Byte: return "System.Byte";
+                case SpecialType.System_SByte: return "System.SByte";
+                case SpecialType.System_Int16: return "System.Int16";
+                case SpecialType.System_UInt16: return "System.UInt16";
+                case SpecialType.System_Int32: return "System.Int32";
+                case SpecialType.System_UInt32: return "System.UInt32";
+                case SpecialType.System_Int64: return "System.Int64";
+                case SpecialType.System_UInt64: return "System.UInt64";
+                case SpecialType.System_Decimal: return "System.Decimal";
+                case SpecialType.System_Single: return "System.Single";
+                case SpecialType.System_Double: return "System.Double";
+                case SpecialType.System_Char: return "System.Char";
+                case SpecialType.System_String: return "System.String";
+                case SpecialType.System_Object: return "System.Object";
+                case SpecialType.System_Void: return "System.Void";
+                default: return type.ToDisplayString().Replace("+", ".");
+            }
+        }
+
+        // Handle generic types
+        if (type is INamedTypeSymbol namedType && namedType.IsGenericType)
+        {
+            var containerType = namedType.ContainingType;
+            string containerPrefix = containerType != null ?
+                GetFullTypeNameWithBraces(containerType) + "." : "";
+
+            // Special handling for Nullable<T>
+            if (namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
+            {
+                var typeArg = namedType.TypeArguments[0];
+                return $"System.Nullable{{{GetFullTypeNameWithBraces(typeArg)}}}";
+            }
+
+            // Get base type name without generic parameters
+            var baseTypeName = namedType.Name;
+            int tickIndex = baseTypeName.IndexOf('`');
+            if (tickIndex > 0)
+                baseTypeName = baseTypeName.Substring(0, tickIndex);
+
+            // Get namespace
+            var ns = namedType.ContainingNamespace;
+            var namespaceString = ns.IsGlobalNamespace ? "" : ns.ToDisplayString() + ".";
+
+            // Format the generic arguments recursively
+            var typeArgs = namedType.TypeArguments;
+            var typeArgStrings = typeArgs.Select(GetFullTypeNameWithBraces);
+
+            return $"{namespaceString}{containerPrefix}{baseTypeName}{{{string.Join(",", typeArgStrings)}}}";
+        }
+
+        // Handle arrays
+        if (type is IArrayTypeSymbol arrayType)
+        {
+            return $"{GetFullTypeNameWithBraces(arrayType.ElementType)}[]";
+        }
+
+        // Handle regular, non-generic types
+        return type.ToDisplayString().Replace("+", ".");
     }
 }
 
