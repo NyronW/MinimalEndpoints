@@ -25,4 +25,10 @@
     <ProjectReference Include="..\..\MinimalEndpoints\MinimalEndpoints.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\MinimalEndpoints.Generators\MinimalEndpoints.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

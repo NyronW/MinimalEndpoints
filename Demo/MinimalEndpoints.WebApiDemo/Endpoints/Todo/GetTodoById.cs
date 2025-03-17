@@ -26,6 +26,7 @@ public class GetTodoById : Endpoint<string, TodoItem>
     /// </summary>
     /// <param name="id">Item unique id</param>
     /// <returns></returns>
+    [HandlerMethod]
     public override async Task<TodoItem> SendAsync([FromRoute] string id, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(id)) Results.BadRequest("id is required");

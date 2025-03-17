@@ -46,6 +46,7 @@ public class CreateTodoItem : IEndpoint
     /// <response code="401">Client is not authenticated</response>
     /// <response code="403">Client is forbiden</response>
     /// <response code="500">Internal server error occured</response>
+    [HandlerMethod]
     public async Task<IResult> SendAsync(string description, [FromQuery] bool? foo, string? bsr, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(description))

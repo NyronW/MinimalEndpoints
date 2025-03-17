@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using MinimalEndpoints.Extensions.Http;
 using MinimalEndpoints.Authorization;
+using MinimalEndpoints;
 
 namespace MinimalEndpoints.WebApiDemo;
 
@@ -21,8 +22,9 @@ public static class ProgramExtensions
     {
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
+        builder.Services.AddGeneratedMinimalEndpoints();
 
-        builder.Services.AddMinimalEndpoints();
+        //builder.Services.AddMinimalEndpoints();
         builder.Services.AddMinimalEndpointSwaggerGen();
 
         builder.Services.AddCustomerServices(); //Add services for support class library
@@ -161,20 +163,35 @@ public static class ProgramExtensions
 
         app.MapControllers();
 
-        app.UseMinimalEndpoints(o =>
-        {
-            o.DefaultRoutePrefix = "/api/v1";
-            o.DefaultGroupName = "v1";
-            o.DefaultRateLimitingPolicyName = "fixed";
-            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
-            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
-            o.AddEndpointFilter<MyCustomEndpointFilter>();
-            o.AddEndpointFilter(new MyCustomEndpointFilter2());
-            o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
-            o.AddEndpointFilter<RequestExecutionTimeFilter>();
+        //app.UseMinimalEndpoints(o =>
+        //{
+        //    o.DefaultRoutePrefix = "/api/v1";
+        //    o.DefaultGroupName = "v1";
+        //    o.DefaultRateLimitingPolicyName = "fixed";
+        //    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
+        //    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
+        //    o.AddEndpointFilter<MyCustomEndpointFilter>();
+        //    o.AddEndpointFilter(new MyCustomEndpointFilter2());
+        //    o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
+        //    o.AddEndpointFilter<RequestExecutionTimeFilter>();
 
-            o.UseAuthorizationResultHandler();
-        });
+        //    o.UseAuthorizationResultHandler();
+        //});
+
+        //app.MapGeneratedMinimalEndpoints(o =>
+        //{
+        //    o.DefaultRoutePrefix = "/api/v1";
+        //    o.DefaultGroupName = "v1";
+        //    o.DefaultRateLimitingPolicyName = "fixed";
+        //    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
+        //    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
+        //    o.AddEndpointFilter<MyCustomEndpointFilter>();
+        //    o.AddEndpointFilter(new MyCustomEndpointFilter2());
+        //    o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
+        //    o.AddEndpointFilter<RequestExecutionTimeFilter>();
+
+        //    o.UseAuthorizationResultHandler();
+        //});
 
         return app;
     }

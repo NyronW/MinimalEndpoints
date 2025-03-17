@@ -1,4 +1,6 @@
-﻿namespace MinimalEndpoints;
+﻿using System.ComponentModel;
+
+namespace MinimalEndpoints;
 
 public sealed class EndpointDescriptor
 {
@@ -42,5 +44,15 @@ public sealed class EndpointDescriptors
             throw new InvalidOperationException($"An endpoint with the route name '{descriptor.RouteName}' already exists.");
 
         _descriptors.Add(descriptor);
+    }
+
+    /// <summary>
+    /// Sets the ServiceProvider for internal use by generated code.
+    /// This API is intended for use only by the MinimalEndpoints source generator.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public void ___SetServiceProvicer___(IServiceProvider serviceProvider)
+    {
+        ServiceProvider = serviceProvider;
     }
 }

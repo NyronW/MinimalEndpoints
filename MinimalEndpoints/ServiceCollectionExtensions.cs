@@ -101,6 +101,8 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+
+
     private static void RegisterMinimalEndpointServices(IServiceCollection services)
     {
         // Check if EndpointDescriptors is already registered

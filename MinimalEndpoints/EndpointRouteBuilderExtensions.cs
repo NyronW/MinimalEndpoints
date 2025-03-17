@@ -178,7 +178,6 @@ public static class EndpointRouteBuilderExtensions
 
                 if (!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
                 {
-                    mapping.WithName(tagAttr.RouteName);
                     mapping.WithMetadata(new EndpointNameMetadata(tagAttr.RouteName));
                 }
 
