@@ -178,20 +178,20 @@ public static class ProgramExtensions
         //    o.UseAuthorizationResultHandler();
         //});
 
-        //app.MapGeneratedMinimalEndpoints(o =>
-        //{
-        //    o.DefaultRoutePrefix = "/api/v1";
-        //    o.DefaultGroupName = "v1";
-        //    o.DefaultRateLimitingPolicyName = "fixed";
-        //    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
-        //    o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
-        //    o.AddEndpointFilter<MyCustomEndpointFilter>();
-        //    o.AddEndpointFilter(new MyCustomEndpointFilter2());
-        //    o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
-        //    o.AddEndpointFilter<RequestExecutionTimeFilter>();
+        app.MapGeneratedMinimalEndpoints(o =>
+        {
+            o.DefaultRoutePrefix = "/api/v1";
+            o.DefaultGroupName = "v1";
+            o.DefaultRateLimitingPolicyName = "fixed";
+            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest));
+            o.AddFilterMetadata(new ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status500InternalServerError));
+            o.AddEndpointFilter<MyCustomEndpointFilter>();
+            o.AddEndpointFilter(new MyCustomEndpointFilter2());
+            o.AddEndpointFilter(new CorrelationIdFilter("X-Correlation-ID"));
+            o.AddEndpointFilter<RequestExecutionTimeFilter>();
 
-        //    o.UseAuthorizationResultHandler();
-        //});
+            o.UseAuthorizationResultHandler();
+        });
 
         return app;
     }

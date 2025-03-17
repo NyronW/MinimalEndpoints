@@ -99,7 +99,7 @@ public static class ParameterBinder
     /// - For primitives (and strings, decimals, etc.), try Route then Query.
     /// - For complex types, assume JSON body binding.
     /// </summary>
-    public static async Task<T> BindDefaultAsync<T>(HttpContext context, string parameterName, T defaultValue = default)
+    public static async Task<T> BindDefaultAsync<T>(HttpContext context, string parameterName, T defaultValue = default!)
     {
         // If T is a primitive, string, or decimal, try route then query.
         if (typeof(T).IsPrimitive || typeof(T) == typeof(string) || typeof(T) == typeof(decimal))
@@ -110,7 +110,16 @@ public static class ParameterBinder
                 return fromRoute;
 
             // Otherwise, try query string.
-            return BindFromQuery(context, parameterName, defaultValue);
+            var fromQuery =  BindFromQuery(context, parameterName, defaultValue);
+            if (!EqualityComparer<T>.Default.Equals(fromQuery, defaultValue))
+                return fromQuery;
+
+            // Otherwise, try query string.
+            var fromHeader = BindFromHeader(context, parameterName, defaultValue);
+            if (!EqualityComparer<T>.Default.Equals(fromHeader, defaultValue))
+                return fromHeader;
+
+            return defaultValue;
         }
         else
         {
