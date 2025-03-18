@@ -90,7 +90,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
                         DiagnosticSeverity.Info,
                         isEnabledByDefault: true);
                     spc.ReportDiagnostic(Diagnostic.Create(noHandlerDesc, Location.None, typeSymbol.Name));
-                    continue;
+                    //continue;
                 }
 
                 // Determine if BindAsync is overridden (i.e. declared on the type itself).
@@ -102,8 +102,10 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
                 var endpointInfo = new EndpointInfo
                 {
                     EndpointType = typeSymbol,
-                    HandlerMethod = handlerMethod,
-                    IsBindAsyncOverridden = isBindAsyncOverridden
+                    HandlerMethod = handlerMethod!,
+                    IsBindAsyncOverridden = isBindAsyncOverridden,
+                    EndpointInterface = typeSymbol.AllInterfaces.Any(i => i.Name == "IEndpoint") ? "IEndpoint" : "IEndpointDefinition",
+                    InheritsFromEndpointBase = InheritsFromType(typeSymbol, "EndpointBase")
                 };
 
                 // Look for the [Endpoint] attribute to retrieve extra metadata.
@@ -155,7 +157,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 
     private static bool ImplementsIEndpoint(INamedTypeSymbol symbol)
     {
-        return symbol.AllInterfaces.Any(i => i.Name == "IEndpoint");
+        return symbol.AllInterfaces.Any(i => i.Name == "IEndpoint" || i.Name == "IEndpointDefinition");
     }
 
     private static string GenerateExtensions(List<EndpointInfo> endpoints)
@@ -179,6 +181,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         sb.AppendLine("public static class MinimalEndpointExtensions");
         sb.AppendLine("{");
 
+        #region AddGeneratedMinimalEndpoints
         // Generate DI registration.
         sb.AppendLineWithTab(1, "public static IServiceCollection AddGeneratedMinimalEndpoints(this IServiceCollection services)");
         sb.AppendLineWithTab(1, "{");
@@ -188,7 +191,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         {
             var typeName = endpoint.EndpointType.ToDisplayString();
             sb.AppendFormattedLineWithTab(2, "services.AddScoped<{0}>();", typeName)
-              .AppendFormattedLineWithTab(2, "services.AddScoped<IEndpoint, {0}>();", typeName);
+              .AppendFormattedLineWithTab(2, "services.AddScoped<{0},{1}>();", endpoint.EndpointInterface, typeName);
         }
 
         sb.NewLine();
@@ -207,6 +210,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         sb.NewLine();
         sb.AppendLineWithTab(2, "return services;");
         sb.AppendLineWithTab(1, "}");
+        #endregion
 
         sb.NewLine();
         sb.NewLine();
@@ -235,6 +239,15 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             var name = endpoint.EndpointType.Name;
 
             sb.AppendFormattedLineWithTab(2, "// Mapping for {0}", typeName);
+
+            if (endpoint.EndpointInterface == "IEndpointDefinition")
+            {
+
+
+                continue;
+            }
+
+            #region IEndpoint Registration
             sb.AppendFormattedLineWithTab(2, "var name_{0} = \"{1}\";", i, name);
 
             // Use custom route from the [Endpoint] attribute if provided; otherwise, use the instance property.
@@ -336,7 +349,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             sb.AppendWithTab(3, "var result = ");
             if (IsTaskLike(endpoint.HandlerMethod.ReturnType))
                 sb.Append("await ");
-            sb.Append($"endpoint.{endpoint.HandlerMethod.Name}( {string.Join(", ", callArgs)} );")
+            sb.Append($"endpoint.{endpoint.HandlerMethod.Name}({string.Join(", ", callArgs)} );")
               .NewLine();
 
             sb.AppendLineWithTab(3, "return result;");
@@ -393,22 +406,17 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             }
 
             sb.AppendFormattedLineWithTab(2, "mapping_{0}.WithMetadata(new HttpMethodMetadata(methods_{0}))", i)
-              .AppendFormattedLineWithTab(3, ".WithDisplayName(name_{0});", i);
-
-            sb.AppendLineWithTab(2, "foreach (var filter in serviceConfig.EndpointFilters)")
-              .AppendLineWithTab(2, "{")
-              .AppendFormattedLineWithTab(3, "mapping_{0}.AddEndpointFilter(filter);", i)
-              .AppendLineWithTab(2, "}")
+              .AppendFormattedLineWithTab(3, ".WithDisplayName(name_{0});", i)
               .NewLine();
 
             // Get ProducesResponseTypeAttribute from endpoint class
             sb.AppendFormattedLineWithTab(2, "var producesRespAttributes_{0} = new List<ProducesResponseTypeAttribute>();", i);
-            
+
             // Add attributes from the endpoint class
             var producesAttrs = endpoint.EndpointType.GetAttributes()
                 .Where(a => a.AttributeClass?.Name == "ProducesResponseTypeAttribute")
                 .ToList();
-                
+
             if (producesAttrs.Any())
             {
                 sb.AppendLineWithTab(2, "// Add response type attributes from endpoint class");
@@ -416,15 +424,15 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
                 {
                     // Extract status code from attribute constructor
                     var statusCode = attr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "200";
-                    
+
                     // Extract type from attribute constructor (if available)
-                    var typeArg = attr.ConstructorArguments.Count() > 1 
-                        ? attr.ConstructorArguments[1].Value as ITypeSymbol 
+                    var typeArg = attr.ConstructorArguments.Count() > 1
+                        ? attr.ConstructorArguments[1].Value as ITypeSymbol
                         : null;
-                    
+
                     string ptypeName = "typeof(void)";
                     bool isVoidType = false;
-                    
+
                     if (typeArg != null)
                     {
                         if (typeArg.Name == "Void" && typeArg.ContainingNamespace?.Name == "System")
@@ -437,19 +445,19 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
                             ptypeName = $"typeof({typeArg.ToDisplayString()})";
                         }
                     }
-                    
+
                     // Generate code to create the attribute
-                    sb.AppendFormattedLineWithTab(2, "producesRespAttributes_{0}.Add(new ProducesResponseTypeAttribute({1}, {2}));", 
+                    sb.AppendFormattedLineWithTab(2, "producesRespAttributes_{0}.Add(new ProducesResponseTypeAttribute({1}, {2}));",
                         i, ptypeName, statusCode);
                 }
                 sb.NewLine();
             }
-            
+
             // Add global produces attributes
             sb.AppendLineWithTab(2, "// Add global response type attributes");
             sb.AppendFormattedLineWithTab(2, "if (globalProduces.Any()) producesRespAttributes_{0}.AddRange(globalProduces);", i);
             sb.NewLine();
-            
+
             // Process each attribute
             sb.AppendLineWithTab(2, "// Apply response type attributes to the endpoint");
             sb.AppendFormattedLineWithTab(2, "foreach (var attr in producesRespAttributes_{0})", i);
@@ -470,14 +478,30 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             sb.NewLine();
             sb.AppendFormattedLineWithTab(4, "mapping_{0}.Produces(attr.StatusCode, responseType: null);", i);
             sb.AppendLineWithTab(4, "continue;");
-            sb.AppendLineWithTab(3, "}");
-            sb.NewLine();
+            sb.AppendLineWithTab(3, "}")
+              .NewLine();
+
             sb.AppendFormattedLineWithTab(3, "mapping_{0}.Produces(attr.StatusCode, responseType: attr.Type);", i);
             sb.AppendFormattedLineWithTab(3, "mapping_{0}.WithMetadata(new ProducesResponseTypeMetadata(attr.StatusCode, attr.Type));", i);
-            sb.AppendLineWithTab(2, "}");
-            sb.NewLine();
+            sb.AppendLineWithTab(2, "}")
+              .NewLine();
 
-            sb.NewLine();
+            sb.AppendLineWithTab(2, "foreach (var filter in serviceConfig.EndpointFilters)")
+              .AppendLineWithTab(2, "{")
+              .AppendFormattedLineWithTab(3, "mapping_{0}.AddEndpointFilter(filter);", i)
+              .AppendLineWithTab(2, "}")
+              .NewLine();
+
+            if (endpoint.InheritsFromEndpointBase)
+            {
+                sb.AppendFormattedLineWithTab(2, "var ep = (EndpointBase)temp_{0};", i)
+                  .AppendLineWithTab(2, "foreach (var filter in ep.EndpointFilters)")
+                  .AppendLineWithTab(2, "{")
+                  .AppendFormattedLineWithTab(3, "mapping_{0}.AddEndpointFilter(filter);", i)
+                  .AppendLineWithTab(2, "}")
+                  .NewLine();
+            }
+            #endregion
         }
 
         sb.NewLine();
@@ -497,8 +521,8 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
     {
         string paramName = parameter.Name;
         string typeName = parameter.Type.ToDisplayString();
-        string defaultValuePart = HasDefaultValue(parameter) 
-            ? $", defaultValue: {GetDefaultValueString(parameter)}" 
+        string defaultValuePart = HasDefaultValue(parameter)
+            ? $", defaultValue: {GetDefaultValueString(parameter)}"
             : "";
 
         if (parameter.GetAttributes().Any(a => a.AttributeClass?.Name == "FromRouteAttribute"))
@@ -561,25 +585,25 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
     {
         if (!parameter.HasExplicitDefaultValue)
             return string.Empty;
-        
+
         var defaultValue = parameter.ExplicitDefaultValue;
-        
+
         // Handle null
         if (defaultValue == null)
             return "null";
-        
+
         // Handle string values (need quotes)
         if (defaultValue is string stringValue)
             return $"\"{stringValue}\"";
-        
+
         // Handle char values (need single quotes)
         if (defaultValue is char charValue)
             return $"'{charValue}'";
-        
+
         // Handle boolean values (lowercase in C#)
         if (defaultValue is bool boolValue)
             return boolValue ? "true" : "false";
-        
+
         // Other primitive types and enums
         return defaultValue.ToString();
     }
@@ -674,12 +698,28 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         // Handle regular, non-generic types
         return type.ToDisplayString().Replace("+", ".");
     }
+
+    private static bool InheritsFromType(INamedTypeSymbol symbol, string baseTypeName)
+    {
+        var baseType = symbol.BaseType;
+
+        while (baseType != null)
+        {
+            if (baseType.Name == baseTypeName)
+                return true;
+
+            baseType = baseType.BaseType;
+        }
+
+        return false;
+    }
 }
 
 internal class EndpointInfo
 {
     public INamedTypeSymbol EndpointType { get; set; }
     public IMethodSymbol HandlerMethod { get; set; }
+    public string EndpointInterface { get; set; } = "IEndpoint";
     public bool IsBindAsyncOverridden { get; set; }
     public string RouteName { get; set; } = string.Empty;
     public string? TagName { get; set; } = string.Empty;
@@ -690,5 +730,6 @@ internal class EndpointInfo
     public string? Description { get; set; } = null;
     public string? RateLimitingPolicyName { get; set; } = null!;
     public bool DisableRateLimiting { get; set; } = false;
+    public bool InheritsFromEndpointBase { get; set; } = false;
 }
 
