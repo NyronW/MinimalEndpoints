@@ -35,7 +35,7 @@ public class GetTodoById : Endpoint<string, TodoItem>
 
         if (todo == null) Results.NotFound();
 
-        return todo;
+        return todo!;
     }
 
     public async ValueTask<object[]> BindAsync(HttpRequest request, CancellationToken cancellationToken = default)

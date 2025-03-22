@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System.Text;
+using System.Collections.Immutable;
 
 namespace MinimalEndpoints.Generators;
 
@@ -10,149 +11,157 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Use a syntax provider to filter for class declarations that might be endpoints.
         var candidateClasses = context.SyntaxProvider.CreateSyntaxProvider(
             predicate: static (node, _) => node is ClassDeclarationSyntax cds && cds.Members.Count > 0,
             transform: static (ctx, _) => (ClassDeclarationSyntax)ctx.Node
             ).Where(static candidate => candidate != null);
 
-        // Combine the candidates with the Compilation.
         var compilationAndCandidates = context.CompilationProvider.Combine(candidateClasses.Collect());
 
-        context.RegisterSourceOutput(compilationAndCandidates, static (spc, source) =>
+        context.RegisterSourceOutput(compilationAndCandidates, Execute);
+    }
+
+    private static void Execute(SourceProductionContext spc, (Compilation compilation, ImmutableArray<ClassDeclarationSyntax> candidates) source)
+    {
+        var desc = new DiagnosticDescriptor(
+            id: "MINEND001",
+            title: "Source Generator Message",
+            messageFormat: "Found {0} endpoints.",
+            category: "MinimalEndpointsGenerator",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+        spc.ReportDiagnostic(Diagnostic.Create(desc, Location.None, 0));
+
+        var (compilation, candidates) = source;
+        var endpoints = new List<EndpointInfo>();
+
+        // Report total candidates found
+        var candidatesDesc = new DiagnosticDescriptor(
+            id: "MINEND002",
+            title: "Candidate Classes",
+            messageFormat: "Found {0} candidate classes.",
+            category: "MinimalEndpointsGenerator",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+        spc.ReportDiagnostic(Diagnostic.Create(candidatesDesc, Location.None, candidates.Length));
+
+        // Add a log message to indicate we're starting to process candidates
+        var startProcessingDesc = new DiagnosticDescriptor(
+            id: "MINEND003",
+            title: "Processing Candidates",
+            messageFormat: "Starting to process {0} candidate classes.",
+            category: "MinimalEndpointsGenerator",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+        spc.ReportDiagnostic(Diagnostic.Create(startProcessingDesc, Location.None, candidates.Length));
+
+        foreach (var candidate in candidates)
         {
-            var desc = new DiagnosticDescriptor(
-                id: "MINEND001",
-                title: "Source Generator Message",
-                messageFormat: "Found {0} endpoints.",
-                category: "MinimalEndpointsGenerator",
-                DiagnosticSeverity.Info,
-                isEnabledByDefault: true);
-            spc.ReportDiagnostic(Diagnostic.Create(desc, Location.None, 0));
+            var model = compilation.GetSemanticModel(candidate.SyntaxTree);
+            if (!(model.GetDeclaredSymbol(candidate) is INamedTypeSymbol typeSymbol))
+                continue;
 
-            var (compilation, candidates) = source;
-            var endpoints = new List<EndpointInfo>();
-
-            // Report total candidates found
-            var candidatesDesc = new DiagnosticDescriptor(
-                id: "MINEND002",
-                title: "Candidate Classes",
-                messageFormat: "Found {0} candidate classes.",
-                category: "MinimalEndpointsGenerator",
-                DiagnosticSeverity.Info,
-                isEnabledByDefault: true);
-            spc.ReportDiagnostic(Diagnostic.Create(candidatesDesc, Location.None, candidates.Length));
-
-            // Add a log message to indicate we're starting to process candidates
-            var startProcessingDesc = new DiagnosticDescriptor(
-                id: "MINEND003",
-                title: "Processing Candidates",
-                messageFormat: "Starting to process {0} candidate classes.",
-                category: "MinimalEndpointsGenerator",
-                DiagnosticSeverity.Info,
-                isEnabledByDefault: true);
-            spc.ReportDiagnostic(Diagnostic.Create(startProcessingDesc, Location.None, candidates.Length));
-
-            foreach (var candidate in candidates)
+            // Only consider types that implement IEndpoint.
+            if (!ImplementsIEndpoint(typeSymbol))
             {
-                var model = compilation.GetSemanticModel(candidate.SyntaxTree);
-                if (!(model.GetDeclaredSymbol(candidate) is INamedTypeSymbol typeSymbol))
-                    continue;
+                var notEndpointDesc = new DiagnosticDescriptor(
+                    id: "MINEND003",
+                    title: "Not Endpoint Class",
+                    messageFormat: "Class {0} does not implement IEndpoint.",
+                    category: "MinimalEndpointsGenerator",
+                    DiagnosticSeverity.Info,
+                    isEnabledByDefault: true);
+                spc.ReportDiagnostic(Diagnostic.Create(notEndpointDesc, Location.None, typeSymbol.Name));
+                continue;
+            }
 
-                // Only consider types that implement IEndpoint.
-                if (!ImplementsIEndpoint(typeSymbol))
-                {
-                    var notEndpointDesc = new DiagnosticDescriptor(
-                        id: "MINEND003",
-                        title: "Not Endpoint Class",
-                        messageFormat: "Class {0} does not implement IEndpoint.",
-                        category: "MinimalEndpointsGenerator",
-                        DiagnosticSeverity.Info,
-                        isEnabledByDefault: true);
-                    spc.ReportDiagnostic(Diagnostic.Create(notEndpointDesc, Location.None, typeSymbol.Name));
-                    continue;
-                }
+            var interfaceType = "IEndpoint";
+            if (typeSymbol.AllInterfaces.Any(i => i.Name == "IEndpointDefinition"))
+            {
+                interfaceType = "IEndpointDefinition";
+            }
 
-                // Look for an instance method decorated with [HandlerMethod]
-                var handlerMethod = typeSymbol.GetMembers()
-                    .OfType<IMethodSymbol>()
-                    .FirstOrDefault(m =>
-                        !m.IsStatic &&
-                        m.GetAttributes().Any(a => a.AttributeClass?.Name == "HandlerMethodAttribute"));
+            // Look for an instance method decorated with [HandlerMethod]
+            IMethodSymbol? handlerMethod = GetHandlerMethod(typeSymbol);
 
+            if (handlerMethod == null && interfaceType != "IEndpointDefinition")
+            {
+                // Try to find the handler method from the Handler property delegate
+                handlerMethod = GetHandlerMethodFromDelegate(typeSymbol);
+
+                // If still no handler method found, report and skip
                 if (handlerMethod == null)
                 {
                     var noHandlerDesc = new DiagnosticDescriptor(
                         id: "MINEND004",
                         title: "No Handler Method",
-                        messageFormat: "Class {0} does not have a method decorated with [HandlerMethod].",
+                        messageFormat: "Class {0} does not have a method decorated with [HandlerMethod] or assigned to the Handler property.",
                         category: "MinimalEndpointsGenerator",
                         DiagnosticSeverity.Info,
                         isEnabledByDefault: true);
                     spc.ReportDiagnostic(Diagnostic.Create(noHandlerDesc, Location.None, typeSymbol.Name));
-                    //continue;
+                    continue;
                 }
-
-                // Determine if BindAsync is overridden (i.e. declared on the type itself).
-                bool isBindAsyncOverridden = typeSymbol.GetMembers("BindAsync")
-                    .OfType<IMethodSymbol>()
-                    .Any(m => !m.IsAbstract && SymbolEqualityComparer.Default.Equals(m.ContainingType, typeSymbol));
-
-
-                var endpointInfo = new EndpointInfo
-                {
-                    EndpointType = typeSymbol,
-                    HandlerMethod = handlerMethod!,
-                    IsBindAsyncOverridden = isBindAsyncOverridden,
-                    EndpointInterface = typeSymbol.AllInterfaces.Any(i => i.Name == "IEndpoint") ? "IEndpoint" : "IEndpointDefinition",
-                    InheritsFromEndpointBase = InheritsFromType(typeSymbol, "EndpointBase")
-                };
-
-                // Look for the [Endpoint] attribute to retrieve extra metadata.
-                var endpointAttr = typeSymbol.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.Name == "EndpointAttribute");
-                if (endpointAttr != null)
-                {
-                    foreach (var arg in endpointAttr.NamedArguments)
-                    {
-                        if (arg.Key == "RouteName" && arg.Value.Value is string routeName)
-                            endpointInfo.RouteName = routeName;
-                        else if (arg.Key == "Description" && arg.Value.Value is string description)
-                            endpointInfo.Description = description;
-                        else if (arg.Key == "TagName" && arg.Value.Value is string tagName)
-                            endpointInfo.TagName = tagName;
-                        else if (arg.Key == "OperationId" && arg.Value.Value is string operationId)
-                            endpointInfo.OperationId = operationId;
-                        else if (arg.Key == "GroupName" && arg.Value.Value is string groupName)
-                            endpointInfo.GroupName = groupName;
-                        else if (arg.Key == "RoutePrefixOverride" && arg.Value.Value is string routePrefixOverride)
-                            endpointInfo.RoutePrefixOverride = routePrefixOverride;
-                        else if (arg.Key == "RateLimitingPolicyName" && arg.Value.Value is string rateLimitingPolicyName)
-                            endpointInfo.RateLimitingPolicyName = rateLimitingPolicyName;
-                        else if (arg.Key == "ExcludeFromDescription" && arg.Value.Value is bool excludeFromDescription)
-                            endpointInfo.ExcludeFromDescription = excludeFromDescription;
-                        else if (arg.Key == "DisableRateLimiting" && arg.Value.Value is bool disableRateLimiting)
-                            endpointInfo.DisableRateLimiting = disableRateLimiting;
-                    }
-                }
-
-                endpoints.Add(endpointInfo);
             }
 
-            // After endpoints are populated, report results and generate code
-            var endpointsFoundDesc = new DiagnosticDescriptor(
-                id: "MINEND005",
-                title: "Endpoints Found",
-                messageFormat: "Found {0} valid endpoints after processing. Will generate extension methods.",
-                category: "MinimalEndpointsGenerator",
-                DiagnosticSeverity.Info,
-                isEnabledByDefault: true);
-            spc.ReportDiagnostic(Diagnostic.Create(endpointsFoundDesc, Location.None, endpoints.Count));
+            // Determine if BindAsync is overridden (i.e. declared on the type itself).
+            bool isBindAsyncOverridden = typeSymbol.GetMembers("BindAsync")
+                .OfType<IMethodSymbol>()
+                .Any(m => !m.IsAbstract && SymbolEqualityComparer.Default.Equals(m.ContainingType, typeSymbol));
 
-            // Generate the extension methods regardless of whether we found endpoints
-            var generatedSource = GenerateExtensions(endpoints);
-            spc.AddSource("MinimalEndpoints.g.cs", SourceText.From(generatedSource, Encoding.UTF8));
-        });
+            var endpointInfo = new EndpointInfo
+            {
+                EndpointType = typeSymbol,
+                HandlerMethod = handlerMethod!,
+                IsBindAsyncOverridden = isBindAsyncOverridden,
+                EndpointInterface = interfaceType,
+                InheritsFromEndpointBase = InheritsFromType(typeSymbol, "EndpointBase")
+            };
+
+            // Look for the [Endpoint] attribute to retrieve extra metadata.
+            var endpointAttr = typeSymbol.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name == "EndpointAttribute");
+            if (endpointAttr != null)
+            {
+                foreach (var arg in endpointAttr.NamedArguments)
+                {
+                    if (arg.Key == "RouteName" && arg.Value.Value is string routeName)
+                        endpointInfo.RouteName = routeName;
+                    else if (arg.Key == "Description" && arg.Value.Value is string description)
+                        endpointInfo.Description = description;
+                    else if (arg.Key == "TagName" && arg.Value.Value is string tagName)
+                        endpointInfo.TagName = tagName;
+                    else if (arg.Key == "OperationId" && arg.Value.Value is string operationId)
+                        endpointInfo.OperationId = operationId;
+                    else if (arg.Key == "GroupName" && arg.Value.Value is string groupName)
+                        endpointInfo.GroupName = groupName;
+                    else if (arg.Key == "RoutePrefixOverride" && arg.Value.Value is string routePrefixOverride)
+                        endpointInfo.RoutePrefixOverride = routePrefixOverride;
+                    else if (arg.Key == "RateLimitingPolicyName" && arg.Value.Value is string rateLimitingPolicyName)
+                        endpointInfo.RateLimitingPolicyName = rateLimitingPolicyName;
+                    else if (arg.Key == "ExcludeFromDescription" && arg.Value.Value is bool excludeFromDescription)
+                        endpointInfo.ExcludeFromDescription = excludeFromDescription;
+                    else if (arg.Key == "DisableRateLimiting" && arg.Value.Value is bool disableRateLimiting)
+                        endpointInfo.DisableRateLimiting = disableRateLimiting;
+                }
+            }
+
+            endpoints.Add(endpointInfo);
+        }
+
+        // After endpoints are populated, report results and generate code
+        var endpointsFoundDesc = new DiagnosticDescriptor(
+            id: "MINEND005",
+            title: "Endpoints Found",
+            messageFormat: "Found {0} valid endpoints after processing. Will generate extension methods.",
+            category: "MinimalEndpointsGenerator",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+        spc.ReportDiagnostic(Diagnostic.Create(endpointsFoundDesc, Location.None, endpoints.Count));
+
+        // Generate the extension methods regardless of whether we found endpoints
+        var generatedSource = GenerateExtensions(endpoints);
+        spc.AddSource("MinimalEndpoints.g.cs", SourceText.From(generatedSource, Encoding.UTF8));
     }
 
     private static bool ImplementsIEndpoint(INamedTypeSymbol symbol)
@@ -238,12 +247,13 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             var typeName = endpoint.EndpointType.ToDisplayString();
             var name = endpoint.EndpointType.Name;
 
-            sb.AppendFormattedLineWithTab(2, "// Mapping for {0}", typeName);
+            sb.AppendFormattedLineWithTab(2, "#region Mapping for {0}", typeName);
 
             if (endpoint.EndpointInterface == "IEndpointDefinition")
             {
 
-
+                sb.AppendLineWithTab(2, "#endregion")
+                  .NewLine();
                 continue;
             }
 
@@ -270,7 +280,6 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             sb.AppendFormattedLineWithTab(2, "var methods_{0} = new[] {{ temp_{0}.Method.Method }};", i);
             sb.NewLine();
 
-            sb.AppendFormattedLineWithTab(2, "// Create and add endpoint descriptor");
             sb.AppendFormattedLineWithTab(2, "var handlerMethod_{0} = \"{1}\";", i, endpoint.HandlerMethod.Name);
 
             // Build the handler method name string directly
@@ -342,14 +351,11 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
                         callArgs.Add("cancellationToken");
                         continue;
                     }
-                    callArgs.Add(GetBinderCall(param));
+                    callArgs.Add(GetBinderCall(param, isAsync));
                 }
             }
 
-            sb.AppendWithTab(3, "var result = ");
-            if (IsTaskLike(endpoint.HandlerMethod.ReturnType))
-                sb.Append("await ");
-            sb.Append($"endpoint.{endpoint.HandlerMethod.Name}({string.Join(", ", callArgs)} );")
+            sb.AppendLine(GenerateHandlerCall(endpoint, callArgs, isAsync))
               .NewLine();
 
             sb.AppendLineWithTab(3, "return result;");
@@ -419,7 +425,6 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 
             if (producesAttrs.Any())
             {
-                sb.AppendLineWithTab(2, "// Add response type attributes from endpoint class");
                 foreach (var attr in producesAttrs)
                 {
                     // Extract status code from attribute constructor
@@ -454,12 +459,10 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             }
 
             // Add global produces attributes
-            sb.AppendLineWithTab(2, "// Add global response type attributes");
             sb.AppendFormattedLineWithTab(2, "if (globalProduces.Any()) producesRespAttributes_{0}.AddRange(globalProduces);", i);
             sb.NewLine();
 
             // Process each attribute
-            sb.AppendLineWithTab(2, "// Apply response type attributes to the endpoint");
             sb.AppendFormattedLineWithTab(2, "foreach (var attr in producesRespAttributes_{0})", i);
             sb.AppendLineWithTab(2, "{");
             sb.AppendLineWithTab(3, "if (attr.Type == typeof(void))");
@@ -494,14 +497,17 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 
             if (endpoint.InheritsFromEndpointBase)
             {
-                sb.AppendFormattedLineWithTab(2, "var ep = (EndpointBase)temp_{0};", i)
-                  .AppendLineWithTab(2, "foreach (var filter in ep.EndpointFilters)")
+                sb.AppendFormattedLineWithTab(2, "var ep_{0} = (EndpointBase)temp_{0};", i)
+                  .AppendFormattedLineWithTab(2, "foreach (var filter in ep_{0}.EndpointFilters)", i)
                   .AppendLineWithTab(2, "{")
                   .AppendFormattedLineWithTab(3, "mapping_{0}.AddEndpointFilter(filter);", i)
                   .AppendLineWithTab(2, "}")
                   .NewLine();
             }
             #endregion
+
+            sb.AppendLineWithTab(2, "#endregion")
+              .NewLine();
         }
 
         sb.NewLine();
@@ -513,11 +519,8 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Determines the appropriate ParameterBinder call based on the parameter's attributes.
-    /// If no attribute is specified, applies default binding rules.
-    /// </summary>
-    private static string GetBinderCall(IParameterSymbol parameter)
+    #region Helper Methods
+    private static string GetBinderCall(IParameterSymbol parameter, bool useAsync)
     {
         string paramName = parameter.Name;
         string typeName = parameter.Type.ToDisplayString();
@@ -539,9 +542,11 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         {
             // No attribute: default heuristics.
             if (parameter.Type.IsValueType || parameter.Type.SpecialType == SpecialType.System_String)
-                return $"ParameterBinder.BindDefaultAsync<{typeName}>(context, \"{paramName}\"{defaultValuePart}).Result";
+                return useAsync ? $"await ParameterBinder.BindDefaultAsync<{typeName}>(context, \"{paramName}\"{defaultValuePart})"
+                    : $"ParameterBinder.BindDefaultAsync<{typeName}>(context, \"{paramName}\"{defaultValuePart}).Result";
             else
-                return $"await ParameterBinder.BindFromBodyAsync<{typeName}>(context)";
+                return useAsync ? $"await ParameterBinder.BindFromBodyAsync<{typeName}>(context)"
+                    : $"ParameterBinder.BindFromBodyAsync<{typeName}>(context).Result";
         }
     }
 
@@ -713,6 +718,169 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 
         return false;
     }
+
+    private static IMethodSymbol? GetHandlerMethod(INamedTypeSymbol? typeSymbol)
+    {
+        if (typeSymbol == null || typeSymbol.SpecialType == SpecialType.System_Object)
+        {
+            return null;
+        }
+
+        // First try to find a method with the attribute directly on this type
+        var handlerMethod = typeSymbol.GetMembers()
+            .OfType<IMethodSymbol>()
+            .FirstOrDefault(m =>
+                !m.IsStatic &&
+                m.GetAttributes().Any(a => a.AttributeClass?.Name == "HandlerMethodAttribute"));
+
+        if (handlerMethod != null)
+        {
+            return handlerMethod;
+        }
+
+        // If no direct method found, check base classes for a method with the attribute
+        var baseHandlerMethod = GetHandlerMethod(typeSymbol.BaseType);
+        if (baseHandlerMethod != null)
+        {
+            // If found in base class, look for an override in the current class
+            var overriddenMethod = typeSymbol.GetMembers()
+                .OfType<IMethodSymbol>()
+                .FirstOrDefault(m => 
+                    !m.IsStatic && 
+                    m.Name == baseHandlerMethod.Name && 
+                    m.Parameters.Length == baseHandlerMethod.Parameters.Length &&
+                    m.IsOverride);
+            
+            // Return the override if found, otherwise return the base method
+            return overriddenMethod ?? baseHandlerMethod;
+        }
+
+        return null;
+    }
+
+    private static IMethodSymbol? GetHandlerMethodFromDelegate(INamedTypeSymbol typeSymbol)
+    {
+        // Look for a property named "Handler" that returns Delegate
+        var handlerProperty = typeSymbol.GetMembers("Handler")
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Type.Name == "Delegate" || p.Type.BaseType?.Name == "Delegate");
+
+        if (handlerProperty == null)
+            return null;
+
+        // Find the syntax node for the property declaration
+        var declarationSyntax = handlerProperty.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as PropertyDeclarationSyntax;
+        if (declarationSyntax == null)
+            return null;
+
+        // Look for an arrow expression body (e.g., "public Delegate Handler => DeleteAsync;")
+        if (declarationSyntax.ExpressionBody != null)
+        {
+            var methodNameExpr = declarationSyntax.ExpressionBody.Expression as IdentifierNameSyntax;
+            if (methodNameExpr != null)
+            {
+                string methodName = methodNameExpr.Identifier.ValueText;
+
+                return typeSymbol.GetMembers(methodName)
+                    .OfType<IMethodSymbol>()
+                    .FirstOrDefault(m => !m.IsStatic);
+            }
+        }
+
+        // Look for a getter with a return statement (e.g., "{ get { return DeleteAsync; } }")
+        if (declarationSyntax.AccessorList != null)
+        {
+            var getAccessor = declarationSyntax.AccessorList.Accessors
+                .FirstOrDefault(a => a.Keyword.ValueText == "get");
+
+            if (getAccessor?.Body != null)
+            {
+                var returnStatement = getAccessor.Body.Statements
+                    .OfType<ReturnStatementSyntax>()
+                    .FirstOrDefault();
+
+                if (returnStatement?.Expression is IdentifierNameSyntax returnIdentifier)
+                {
+                    string methodName = returnIdentifier.Identifier.ValueText;
+
+                    // Find the method with this name in the class
+                    return typeSymbol.GetMembers(methodName)
+                        .OfType<IMethodSymbol>()
+                        .FirstOrDefault(m => !m.IsStatic);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string GenerateHandlerCall(EndpointInfo endpoint, List<string> callArgs, bool isAsync)
+    {
+        var sb = new StringBuilder();
+        var handlerMethod = endpoint.HandlerMethod;
+        
+        // Check if handler method is public
+        if (handlerMethod.DeclaredAccessibility == Accessibility.Public)
+        {
+            // Use direct method call
+            sb.AppendWithTab(3, "var result = ");
+            if (isAsync)
+                sb.Append("await ");
+            sb.Append($"endpoint.{handlerMethod.Name}({string.Join(", ", callArgs)});");
+        }
+        else
+        {
+            // Use the Handler delegate property
+            sb.AppendLineWithTab(3, "// Handler method is not public, using the Handler delegate property");
+            sb.AppendLineWithTab(3, "var handlerDelegate = endpoint.Handler;");
+            
+            // Create the appropriate delegate type based on parameters and return type
+            string delegateType = GetDelegateType(handlerMethod);
+            
+            sb.AppendLineWithTab(3, $"var typedHandler = ({delegateType})handlerDelegate;");
+            
+            // Call the delegate
+            sb.AppendWithTab(3, "var result = ");
+            if (isAsync)
+                sb.Append("await ");
+            sb.Append($"typedHandler({string.Join(", ", callArgs)});");
+        }
+        
+        return sb.ToString();
+    }
+
+    private static string GetDelegateType(IMethodSymbol method)
+    {
+        var returnType = method.ReturnType.ToDisplayString();
+        bool isTask = IsTaskLike(method.ReturnType);
+        
+        // For methods with Task<T> return type, extract T
+        if (isTask && method.ReturnType is INamedTypeSymbol namedType && namedType.IsGenericType)
+        {
+            returnType = namedType.TypeArguments[0].ToDisplayString();
+        }
+        else if (isTask) // Plain Task
+        {
+            returnType = "void";
+        }
+        
+        // Build the delegate type based on parameters and return type
+        var parameters = string.Join(", ", method.Parameters.Select(p => p.Type.ToDisplayString()));
+        
+        if (returnType == "void")
+        {
+            if (parameters.Length == 0)
+                return "System.Action";
+            return $"System.Action<{parameters}>";
+        }
+        else
+        {
+            if (parameters.Length == 0)
+                return $"System.Func<{returnType}>";
+            return $"System.Func<{parameters}, {returnType}>";
+        }
+    }
+    #endregion
 }
 
 internal class EndpointInfo

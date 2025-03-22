@@ -38,7 +38,7 @@ public class AuthenticationController : ControllerBase
 
             if (user.Password.Equals(loginDTO.Password))
             {
-                var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["AuthZ:SecretKey"]));
+                var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["AuthZ:SecretKey"]!));
                 var signinCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
                 var jwtSecurityToken = new JwtSecurityToken(
                     issuer: _configuration["AuthZ:Issuer"],
