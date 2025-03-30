@@ -18,6 +18,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 
         var compilationAndCandidates = context.CompilationProvider.Combine(candidateClasses.Collect());
 
+        // Generate current project endpoints
         context.RegisterSourceOutput(compilationAndCandidates, Execute);
     }
 
@@ -159,16 +160,21 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             isEnabledByDefault: true);
         spc.ReportDiagnostic(Diagnostic.Create(endpointsFoundDesc, Location.None, endpoints.Count));
 
+        // Now, additionally find endpoints from referenced assemblies
+        var referencedAssemblyEndpoints = FindEndpointsFromReferencedAssemblies(compilation);
+        spc.AddSource("test.g.cs", SourceText.From($"namespace foo; //{referencedAssemblyEndpoints.Count.ToString()}", Encoding.UTF8));
+
+
+        // Combine all endpoints
+        var allEndpoints = endpoints.Concat(referencedAssemblyEndpoints).ToList();
+
         // Generate the extension methods regardless of whether we found endpoints
         var generatedSource = GenerateExtensions(endpoints);
         spc.AddSource("MinimalEndpoints.g.cs", SourceText.From(generatedSource, Encoding.UTF8));
     }
 
-    private static bool ImplementsIEndpoint(INamedTypeSymbol symbol)
-    {
-        return symbol.AllInterfaces.Any(i => i.Name == "IEndpoint" || i.Name == "IEndpointDefinition");
-    }
 
+    #region Helper Methods
     private static string GenerateExtensions(List<EndpointInfo> endpoints)
     {
         var sb = new StringBuilder();
@@ -178,7 +184,10 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
         sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
+        sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
+        sb.AppendLine("using Microsoft.AspNetCore.Http;");
+        sb.AppendLine("using Microsoft.Extensions.Logging;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine("using MinimalEndpoints.Authorization;");
         sb.AppendLine("using MinimalEndpoints.Extensions.Http.ContentNegotiation;");
@@ -204,37 +213,27 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         }
 
         sb.NewLine();
-        sb.AppendLineWithTab(2, "var descriptions = new EndpointDescriptors();");
-        sb.AppendLineWithTab(2, "services.AddSingleton(sp =>")
-          .AppendLineWithTab(2, "{")
-          .AppendLineWithTab(3, "descriptions.___SetServiceProvicer___(sp);")
-          .AppendLineWithTab(3, "return descriptions;")
-          .AppendLineWithTab(2, "});");
-        sb.NewLine();
-        sb.AppendLineWithTab(2, "services.AddSingleton<IAuthorizationMiddlewareResultHandler, EndpointAuthorizationMiddlewareResultHandler>();");
-        sb.AppendLineWithTab(2, "services.AddTransient<IResponseNegotiator, JsonResponseNegotiator>();");
-        sb.AppendLineWithTab(2, "services.AddTransient<IResponseNegotiator, XmlResponseNegotiator>();");
-        sb.AppendLineWithTab(2, "services.AddTransient<IEndpointModelBinder, JsonEndpointModelBiner>();");
-        sb.AppendLineWithTab(2, "services.AddTransient<IEndpointModelBinder, XmlEndpointModelBinder>();");
+        sb.AppendLineWithTab(2, "services.RegisterMinimalEndpointServices();");
         sb.NewLine();
         sb.AppendLineWithTab(2, "return services;");
         sb.AppendLineWithTab(1, "}");
+        sb.NewLine();
         #endregion
 
-        sb.NewLine();
         sb.NewLine();
 
         // Generate the endpoint mapping method.
         sb.AppendLineWithTab(1, "public static IEndpointRouteBuilder MapGeneratedMinimalEndpoints(this IEndpointRouteBuilder builder, Action<EndpointConfiguration>? configuration)");
         sb.AppendLineWithTab(1, "{");
+        sb.AppendLineWithTab(2, "builder.ConfigureMinimalEndpointCore();")
+          .NewLine();
+
         sb.AppendLineWithTab(2, "using var scope = builder.ServiceProvider.CreateScope();");
         sb.AppendLineWithTab(2, "var services = scope.ServiceProvider;")
           .NewLine();
+
         sb.AppendLineWithTab(2, "var endpointDescriptors = builder.ServiceProvider.GetRequiredService<EndpointDescriptors>();");
-        sb.AppendLineWithTab(2, "var serviceConfig = new EndpointConfiguration")
-          .AppendLineWithTab(2, "{")
-          .AppendLineWithTab(3, "ServiceProvider = builder.ServiceProvider")
-          .AppendLineWithTab(2, "};");
+        sb.AppendLineWithTab(2, "var serviceConfig = new EndpointConfiguration(builder.ServiceProvider);");
         sb.AppendLineWithTab(2, "configuration?.Invoke(serviceConfig);");
         sb.AppendLineWithTab(2, "var globalProduces = serviceConfig.Filters.OfType<ProducesResponseTypeAttribute>();");
 
@@ -251,6 +250,8 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
 
             if (endpoint.EndpointInterface == "IEndpointDefinition")
             {
+                sb.AppendFormattedLineWithTab(2, "var temp_{0} = services.GetRequiredService<{1}>();", i, typeName)
+                  .AppendFormattedLineWithTab(2, "temp_{0}.MapEndpoint(builder);", i);
 
                 sb.AppendLineWithTab(2, "#endregion")
                   .NewLine();
@@ -519,7 +520,182 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    #region Helper Methods
+    private static List<EndpointInfo> FindEndpointsFromReferencedAssemblies(Compilation compilation)
+    {
+        var endpointInterface = compilation.GetTypeByMetadataName("MinimalEndpoints.IEndpoint");
+        var definitionInterface = compilation.GetTypeByMetadataName("MinimalEndpoints.IEndpointDefinition");
+
+        if (endpointInterface == null && definitionInterface == null)
+            return [];
+
+        var results = new List<EndpointInfo>();
+
+        // Process referenced assemblies
+        foreach (var reference in compilation.References.OfType<PortableExecutableReference>())
+        {
+            var assemblySymbol = compilation.GetAssemblyOrModuleSymbol(reference) as IAssemblySymbol;
+            if (assemblySymbol == null) continue;
+
+            // Skip system assemblies and third-party libraries
+            if (ShouldSkipAssembly(assemblySymbol.Name)) continue;
+
+            // Process the assembly for endpoints
+            ProcessAssemblyForEndpoints(assemblySymbol, endpointInterface, definitionInterface, results);
+        }
+
+        return results;
+    }
+
+    private static void ProcessAssemblyForEndpoints(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol? endpointInterface,
+        INamedTypeSymbol? definitionInterface,
+        List<EndpointInfo> results)
+    {
+        // Start with the global namespace
+        ProcessNamespaceForEndpoints(assembly.GlobalNamespace, endpointInterface, definitionInterface, results);
+    }
+
+    private static void ProcessNamespaceForEndpoints(
+        INamespaceSymbol namespaceSymbol,
+        INamedTypeSymbol? endpointInterface,
+        INamedTypeSymbol? definitionInterface,
+        List<EndpointInfo> results)
+    {
+        // Process all types in this namespace
+        foreach (var typeSymbol in namespaceSymbol.GetTypeMembers())
+        {
+            if (!typeSymbol.IsAbstract && (
+                (endpointInterface != null && ImplementsInterface(typeSymbol, endpointInterface)) ||
+                (definitionInterface != null && ImplementsInterface(typeSymbol, definitionInterface))))
+            {
+                TryCreateEndpointInfo(typeSymbol, results);
+            }
+
+            // Process nested types
+            foreach (var nestedType in typeSymbol.GetTypeMembers())
+            {
+                if (!nestedType.IsAbstract && (
+                    (endpointInterface != null && ImplementsInterface(nestedType, endpointInterface)) ||
+                    (definitionInterface != null && ImplementsInterface(nestedType, definitionInterface))))
+                {
+                    TryCreateEndpointInfo(nestedType, results);
+                }
+            }
+        }
+
+        // Process nested namespaces
+        foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
+        {
+            ProcessNamespaceForEndpoints(nestedNamespace, endpointInterface, definitionInterface, results);
+        }
+    }
+
+    private static void TryCreateEndpointInfo(INamedTypeSymbol typeSymbol, List<EndpointInfo> results)
+    {
+        // Determine the interface type
+        var interfaceType = "IEndpoint";
+        if (typeSymbol.AllInterfaces.Any(i => i.Name == "IEndpointDefinition"))
+        {
+            interfaceType = "IEndpointDefinition";
+        }
+
+        // Get handler method
+        IMethodSymbol? handlerMethod = GetHandlerMethod(typeSymbol);
+
+        if (handlerMethod == null && interfaceType != "IEndpointDefinition")
+        {
+            // Try to find handler from delegate
+            handlerMethod = GetHandlerMethodFromDelegate(typeSymbol);
+
+            // Skip if still no handler method found
+            if (handlerMethod == null) return;
+        }
+
+        // Determine if BindAsync is overridden
+        bool isBindAsyncOverridden = typeSymbol.GetMembers("BindAsync")
+            .OfType<IMethodSymbol>()
+            .Any(m => !m.IsAbstract && SymbolEqualityComparer.Default.Equals(m.ContainingType, typeSymbol));
+
+        var endpointInfo = new EndpointInfo
+        {
+            EndpointType = typeSymbol,
+            HandlerMethod = handlerMethod!,
+            IsBindAsyncOverridden = isBindAsyncOverridden,
+            EndpointInterface = interfaceType,
+            InheritsFromEndpointBase = InheritsFromType(typeSymbol, "EndpointBase")
+        };
+
+        // Process [Endpoint] attribute (same as your existing code)
+        var endpointAttr = typeSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EndpointAttribute");
+
+        if (endpointAttr != null)
+        {
+            foreach (var arg in endpointAttr.NamedArguments)
+            {
+                if (arg.Key == "RouteName" && arg.Value.Value is string routeName)
+                    endpointInfo.RouteName = routeName;
+                else if (arg.Key == "Description" && arg.Value.Value is string description)
+                    endpointInfo.Description = description;
+                else if (arg.Key == "TagName" && arg.Value.Value is string tagName)
+                    endpointInfo.TagName = tagName;
+                else if (arg.Key == "OperationId" && arg.Value.Value is string operationId)
+                    endpointInfo.OperationId = operationId;
+                else if (arg.Key == "GroupName" && arg.Value.Value is string groupName)
+                    endpointInfo.GroupName = groupName;
+                else if (arg.Key == "RoutePrefixOverride" && arg.Value.Value is string routePrefixOverride)
+                    endpointInfo.RoutePrefixOverride = routePrefixOverride;
+                else if (arg.Key == "RateLimitingPolicyName" && arg.Value.Value is string rateLimitingPolicyName)
+                    endpointInfo.RateLimitingPolicyName = rateLimitingPolicyName;
+                else if (arg.Key == "ExcludeFromDescription" && arg.Value.Value is bool excludeFromDescription)
+                    endpointInfo.ExcludeFromDescription = excludeFromDescription;
+                else if (arg.Key == "DisableRateLimiting" && arg.Value.Value is bool disableRateLimiting)
+                    endpointInfo.DisableRateLimiting = disableRateLimiting;
+            }
+        }
+
+        results.Add(endpointInfo);
+    }
+
+    private static bool ShouldSkipAssembly(string assemblyName)
+    {
+        // Skip common third-party and framework assemblies
+        if (assemblyName.StartsWith("System.")) return true;
+        if (assemblyName.StartsWith("Microsoft.")) return true;
+        if (assemblyName == "System") return true;
+        if (assemblyName == "mscorlib") return true;
+        if (assemblyName == "netstandard") return true;
+
+        // Skip common third-party libraries (you can expand this list)
+        var thirdPartyPrefixes = new[]
+        {
+        "Newtonsoft.",
+        "EntityFramework",
+        "Npgsql",
+        "Azure.",
+        // Add other prefixes as needed
+    };
+
+        foreach (var prefix in thirdPartyPrefixes)
+        {
+            if (assemblyName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ImplementsInterface(INamedTypeSymbol type, INamedTypeSymbol interfaceType)
+    {
+        return type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, interfaceType));
+    }
+
+    private static bool ImplementsIEndpoint(INamedTypeSymbol symbol)
+    {
+        return symbol.AllInterfaces.Any(i => i.Name == "IEndpoint" || i.Name == "IEndpointDefinition");
+    }
+
     private static string GetBinderCall(IParameterSymbol parameter, bool useAsync)
     {
         string paramName = parameter.Name;
@@ -745,12 +921,12 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             // If found in base class, look for an override in the current class
             var overriddenMethod = typeSymbol.GetMembers()
                 .OfType<IMethodSymbol>()
-                .FirstOrDefault(m => 
-                    !m.IsStatic && 
-                    m.Name == baseHandlerMethod.Name && 
+                .FirstOrDefault(m =>
+                    !m.IsStatic &&
+                    m.Name == baseHandlerMethod.Name &&
                     m.Parameters.Length == baseHandlerMethod.Parameters.Length &&
                     m.IsOverride);
-            
+
             // Return the override if found, otherwise return the base method
             return overriddenMethod ?? baseHandlerMethod;
         }
@@ -818,7 +994,7 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
     {
         var sb = new StringBuilder();
         var handlerMethod = endpoint.HandlerMethod;
-        
+
         // Check if handler method is public
         if (handlerMethod.DeclaredAccessibility == Accessibility.Public)
         {
@@ -833,49 +1009,39 @@ public class MinimalEndpointGenerator : IIncrementalGenerator
             // Use the Handler delegate property
             sb.AppendLineWithTab(3, "// Handler method is not public, using the Handler delegate property");
             sb.AppendLineWithTab(3, "var handlerDelegate = endpoint.Handler;");
-            
+
             // Create the appropriate delegate type based on parameters and return type
             string delegateType = GetDelegateType(handlerMethod);
-            
+
             sb.AppendLineWithTab(3, $"var typedHandler = ({delegateType})handlerDelegate;");
-            
+
             // Call the delegate
             sb.AppendWithTab(3, "var result = ");
             if (isAsync)
                 sb.Append("await ");
             sb.Append($"typedHandler({string.Join(", ", callArgs)});");
         }
-        
+
         return sb.ToString();
     }
 
     private static string GetDelegateType(IMethodSymbol method)
     {
+        // Get the full return type including Task if it's an async method
         var returnType = method.ReturnType.ToDisplayString();
-        bool isTask = IsTaskLike(method.ReturnType);
-        
-        // For methods with Task<T> return type, extract T
-        if (isTask && method.ReturnType is INamedTypeSymbol namedType && namedType.IsGenericType)
-        {
-            returnType = namedType.TypeArguments[0].ToDisplayString();
-        }
-        else if (isTask) // Plain Task
-        {
-            returnType = "void";
-        }
-        
+
         // Build the delegate type based on parameters and return type
         var parameters = string.Join(", ", method.Parameters.Select(p => p.Type.ToDisplayString()));
-        
-        if (returnType == "void")
+
+        if (returnType == "void" || returnType == "System.Void")
         {
-            if (parameters.Length == 0)
+            if (string.IsNullOrEmpty(parameters))
                 return "System.Action";
             return $"System.Action<{parameters}>";
         }
         else
         {
-            if (parameters.Length == 0)
+            if (string.IsNullOrEmpty(parameters))
                 return $"System.Func<{returnType}>";
             return $"System.Func<{parameters}, {returnType}>";
         }

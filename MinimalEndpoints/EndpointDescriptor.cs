@@ -37,22 +37,12 @@ public sealed class EndpointDescriptors
 
     public IServiceProvider ServiceProvider { get; internal set; }
 
-    internal void Add(EndpointDescriptor descriptor)
+    public void Add(EndpointDescriptor descriptor)
     {
         if (!string.IsNullOrWhiteSpace(descriptor.RouteName) &&
                 _descriptors.Any(d => d.RouteName.Equals(descriptor.RouteName, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException($"An endpoint with the route name '{descriptor.RouteName}' already exists.");
 
         _descriptors.Add(descriptor);
-    }
-
-    /// <summary>
-    /// Sets the ServiceProvider for internal use by generated code.
-    /// This API is intended for use only by the MinimalEndpoints source generator.
-    /// </summary>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public void ___SetServiceProvicer___(IServiceProvider serviceProvider)
-    {
-        ServiceProvider = serviceProvider;
     }
 }

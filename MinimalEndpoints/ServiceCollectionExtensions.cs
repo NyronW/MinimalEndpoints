@@ -7,6 +7,7 @@ using MinimalEndpoints.Extensions;
 using System.Reflection;
 using System.Collections.Concurrent;
 using static MinimalEndpoints.EndpointHandler;
+using System.ComponentModel;
 
 namespace MinimalEndpoints;
 
@@ -96,14 +97,13 @@ public static class ServiceCollectionExtensions
             }
         }
 
-        RegisterMinimalEndpointServices(services);
+        services.RegisterMinimalEndpointServices();
 
         return services;
     }
 
-
-
-    private static void RegisterMinimalEndpointServices(IServiceCollection services)
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static void RegisterMinimalEndpointServices(this IServiceCollection services)
     {
         // Check if EndpointDescriptors is already registered
         if (services.Any(sd => sd.ServiceType == typeof(EndpointDescriptors)))
@@ -112,7 +112,6 @@ public static class ServiceCollectionExtensions
         }
 
         var descriptions = new EndpointDescriptors();
-
         services.AddSingleton(sp =>
         {
             descriptions.ServiceProvider = sp;

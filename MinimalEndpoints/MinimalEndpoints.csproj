@@ -35,10 +35,4 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>MinimalEndpoints.WebApiDemo</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
-
 </Project>

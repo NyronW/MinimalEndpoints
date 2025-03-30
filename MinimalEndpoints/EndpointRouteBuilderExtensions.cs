@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
+using System.ComponentModel;
 using System.Reflection;
 using System.Text;
 
@@ -35,7 +36,7 @@ public static class EndpointRouteBuilderExtensions
     /// <returns>EndpointRouteBuilder</returns>
     public static IEndpointRouteBuilder UseMinimalEndpoints(this IEndpointRouteBuilder builder, Action<EndpointConfiguration>? configuration)
     {
-        ServiceProvider = builder.ServiceProvider;
+        builder.ConfigureMinimalEndpointCore();
 
         using var scope = builder.ServiceProvider.CreateScope();
         var services = scope.ServiceProvider;
@@ -45,11 +46,7 @@ public static class EndpointRouteBuilderExtensions
         var definitions = services.GetServices<IEndpointDefinition>().ToList();
         var endpoints = services.GetServices<IEndpoint>().ToList();
 
-        var serviceConfig = new EndpointConfiguration
-        {
-            ServiceProvider = builder.ServiceProvider
-        };
-
+        var serviceConfig = new EndpointConfiguration(builder.ServiceProvider);
         configuration?.Invoke(serviceConfig);
 
         var mappedCount = 0;
@@ -283,6 +280,12 @@ public static class EndpointRouteBuilderExtensions
         logger.LogInformation("Total endpoints mapped: {MappedEndpointCount}", mappedCount);
 
         return builder;
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static void ConfigureMinimalEndpointCore(this IEndpointRouteBuilder builder)
+    {
+        ServiceProvider = builder.ServiceProvider;
     }
 
     private static string GetParameterTypeName(Type type)

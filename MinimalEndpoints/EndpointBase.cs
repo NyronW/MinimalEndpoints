@@ -7,7 +7,9 @@ namespace MinimalEndpoints;
 
 public abstract class EndpointBase
 {
-    internal readonly EndpointFilterCollection EndpointFilters = [];
+    private EndpointFilterCollection _endpointFilters = [];
+
+    public IReadOnlyCollection<IEndpointFilter> EndpointFilters => _endpointFilters.AsReadOnly();
 
     /// <summary>
     /// Adds an endpoint filter to current minimal endpoint
@@ -15,7 +17,7 @@ public abstract class EndpointBase
     /// <typeparam name="TFilter"></typeparam>
     protected void AddEndpointFilter<TFilter>() where TFilter: IEndpointFilter
     {
-        EndpointFilters.Add(ActivatorUtilities.CreateInstance<TFilter>(EndpointRouteBuilderExtensions.ServiceProvider));
+        _endpointFilters.Add(ActivatorUtilities.CreateInstance<TFilter>(EndpointRouteBuilderExtensions.ServiceProvider));
     }
 
     /// <summary>
@@ -24,7 +26,7 @@ public abstract class EndpointBase
     /// <param name="filter"></param>
     protected void AddEndpointFilter(IEndpointFilter filter)
     {
-        EndpointFilters.Add(filter);
+        _endpointFilters.Add(filter);
     }
 
     #region Results

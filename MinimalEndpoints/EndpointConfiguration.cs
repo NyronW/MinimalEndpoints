@@ -7,12 +7,12 @@ namespace MinimalEndpoints;
 /// <summary>
 /// Minimal Endpoint configuration
 /// </summary>
-public sealed class EndpointConfiguration
+public sealed class EndpointConfiguration(IServiceProvider serviceProvider)
 {
     internal static bool UseEndpointAuthorizationMiddlewareResultHandler = false;
 
-    internal EndpointFilterCollection EndpointFilters { get; set; } = [];
-    internal IServiceProvider ServiceProvider { get; set; } = default!;
+    public EndpointFilterCollection EndpointFilters { get; internal set; } = [];
+    internal IServiceProvider ServiceProvider { get; set; } = serviceProvider;
 
     /// <summary>
     /// Default route prefix to use for all endpoints. This can be overriden by setting the RoutePrefix property on the Endpoint Attribute 
@@ -66,7 +66,7 @@ public sealed class EndpointConfiguration
     public void UseAuthorizationResultHandler() => UseEndpointAuthorizationMiddlewareResultHandler = true;
 }
 
-internal class EndpointFilterCollection : Collection<IEndpointFilter>
+public sealed class EndpointFilterCollection : Collection<IEndpointFilter>
 {
 
 }
