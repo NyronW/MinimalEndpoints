@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -39,6 +41,9 @@ public class EndpointHandler
             var endpointName = endpoint.GetType().FullName;
             using var _ = _logger.AddContext(_endpointCorrIdName, endpointName);
 
+            Func<BindingFailureContext, Task>? bindingFailurePolicy = sp.GetService<Func<BindingFailureContext, Task>>();
+            var context = request.HttpContext;
+
             try
             {
                 if (_logger.IsEnabled(LogLevel.Information))
@@ -66,7 +71,45 @@ public class EndpointHandler
                         Array.Copy(boundArgs, argsWithDefaults, boundArgs.Length);
 
                         for (int i = boundArgs.Length; i < parameters.Length; i++)
-                            argsWithDefaults[i] = await BindParameter(parameters[i], sp, request, cancellationToken);
+                        {
+                            var bindResult = await BindParameter(parameters[i], sp, request, cancellationToken);
+                            if (!bindResult.Success)
+                            {
+                                var bindingContext = new BindingFailureContext(
+                                    context,
+                                    parameters[i].Name ?? string.Empty,
+                                    bindResult.Value?.ToString(),
+                                    bindResult.ErrorMessage ?? "Unknown binding error"
+                                );
+
+
+                                if (bindingFailurePolicy is not null)
+                                {
+                                    // 1) Let the user handle it
+                                    await bindingFailurePolicy(bindingContext);
+                                }
+                                else
+                                {
+                                    // 2) Fallback to a default 400 response
+                                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                                    context.Response.ContentType = "application/json+problemdetails; charset=utf-8";
+
+                                    var problemDetails = new ProblemDetails
+                                    {
+                                        Type = "https://httpstatuses.com/400",
+                                        Status = StatusCodes.Status400BadRequest,
+                                        Title = "Parameter binding failed",
+                                        Detail = $"Could not bind parameter '{bindingContext.ParameterName}'.",
+                                        Instance = request.GetEncodedUrl()
+                                    };
+                                    await context.Response.WriteAsJsonAsync(problemDetails);
+                                }
+
+                                return null;
+                            }
+
+                            argsWithDefaults[i] = bindResult.Value!;
+                        }
 
                         args = argsWithDefaults;
                     }
@@ -78,7 +121,45 @@ public class EndpointHandler
                 else
                 {
                     for (int i = 0; i < parameters.Length; i++)
-                        args[i] = await BindParameter(parameters[i], sp, request, cancellationToken);
+                    {
+                        var bindResult = await BindParameter(parameters[i], sp, request, cancellationToken);
+                        if (!bindResult.Success)
+                        {
+                            var bindingContext = new BindingFailureContext(
+                                context,
+                                parameters[i].Name ?? string.Empty,
+                                bindResult.Value?.ToString(),
+                                bindResult.ErrorMessage ?? "Unknown binding error"
+                            );
+
+
+                            if (bindingFailurePolicy is not null)
+                            {
+                                // 1) Let the user handle it
+                                await bindingFailurePolicy(bindingContext);
+                            }
+                            else
+                            {
+                                // 2) Fallback to a default 400 response
+                                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                                context.Response.ContentType = "application/json+problemdetails; charset=utf-8";
+
+                                var problemDetails = new ProblemDetails
+                                {
+                                    Type = "https://httpstatuses.com/400",
+                                    Status = StatusCodes.Status400BadRequest,
+                                    Title = "Parameter binding failed",
+                                    Detail = $"Could not bind parameter '{bindingContext.ParameterName}'.",
+                                    Instance = request.GetEncodedUrl()
+                                };
+                                await context.Response.WriteAsJsonAsync(problemDetails);
+                            }
+
+                            return null;
+                        }
+
+                        args[i] = bindResult.Value!;
+                    }
                 }
 
                 if (_logger.IsEnabled(LogLevel.Information))
@@ -126,30 +207,33 @@ public class EndpointHandler
         return _handler(endpoint, sp, loggerFactory, request, cancellationToken);
     }
 
-    private async ValueTask<object?> BindParameter(ParameterInfo param, IServiceProvider sp, HttpRequest request, CancellationToken cancellationToken)
+    private async ValueTask<BindResult> BindParameter(ParameterInfo param, IServiceProvider sp, HttpRequest request, CancellationToken cancellationToken)
     {
+        string rawValue = null!;
+
         try
         {
             if (param.ParameterType == typeof(IFormFile) || param.ParameterType == typeof(IFormFileCollection))
             {
                 var files = request.ReadFormFiles(param.Name!);
-                return files?.Count == 1 ? files[0] : files;
+                return new BindResult(true, files?.Count == 1 ? files[0] : files, null);
             }
 
-            if (param.ParameterType == typeof(HttpContext)) return request.HttpContext;
-            if (param.ParameterType == typeof(HttpRequest)) return request;
-            if (param.ParameterType == typeof(CancellationToken)) return cancellationToken;
+            if (param.ParameterType == typeof(HttpContext)) return new BindResult(true, request.HttpContext, null);
+            if (param.ParameterType == typeof(HttpRequest)) return new BindResult(true, request, null);
+            if (param.ParameterType == typeof(CancellationToken)) return new BindResult(true, cancellationToken, null);
 
             if (param.GetCustomAttribute<FromServicesAttribute>() != null)
             {
-                return sp.GetRequiredService(param.ParameterType);
+                return new BindResult(true, sp.GetRequiredService(param.ParameterType), null);
             }
 
             if (param.GetCustomAttribute<FromRouteAttribute>() is { } fromRouteAttribute)
             {
                 if (request.RouteValues.TryGetValue(fromRouteAttribute.Name ?? param.Name!, out var routeValue) && routeValue is string routeString)
                 {
-                    return ConvertParameter(routeString, param.ParameterType);
+                    rawValue = routeString;
+                    return new BindResult(true, ConvertParameter(routeString, param.ParameterType), null);
                 }
             }
 
@@ -157,7 +241,8 @@ public class EndpointHandler
             {
                 if (request.Query.TryGetValue(fromQueryAttribute.Name ?? param.Name!, out var queryValue) && queryValue.Count > 0)
                 {
-                    return ConvertParameter(queryValue[0]!, param.ParameterType);
+                    rawValue = queryValue[0]!;
+                    return new BindResult(true, ConvertParameter(queryValue[0]!, param.ParameterType), null);
                 }
             }
 
@@ -165,23 +250,27 @@ public class EndpointHandler
             {
                 if (request.Headers.TryGetValue(fromHeaderAttribute.Name ?? param.Name!, out var headerValue) && headerValue.Count > 0)
                 {
-                    return ConvertParameter(headerValue[0]!, param.ParameterType);
+                    rawValue = headerValue[0]!;
+                    return new BindResult(true, ConvertParameter(headerValue[0]!, param.ParameterType), null);
                 }
             }
 
             if (request.RouteValues.TryGetValue(param.Name!, out var routeVal) && routeVal is string routeStr && routeStr != $"{{{param.Name!}}}")
             {
-                return ConvertParameter(routeStr, param.ParameterType);
+                rawValue = routeStr;
+                return new BindResult(true, ConvertParameter(routeStr, param.ParameterType), null);
             }
 
             if (request.Query.TryGetValue(param.Name!, out var queryStringValue) && queryStringValue.Count > 0)
             {
-                return ConvertParameter(queryStringValue[0]!, param.ParameterType);
+                rawValue = queryStringValue[0]!;
+                return new BindResult(true, ConvertParameter(queryStringValue[0]!, param.ParameterType), null);
             }
 
             if (request.Headers.TryGetValue(param.Name!, out var headerStringValue) && headerStringValue.Count > 0)
             {
-                return ConvertParameter(headerStringValue[0]!, param.ParameterType);
+                rawValue = headerStringValue[0]!;
+                return new BindResult(true, ConvertParameter(headerStringValue[0]!, param.ParameterType), null);
             }
 
             // Handle value type defaults
@@ -190,7 +279,7 @@ public class EndpointHandler
                 if (_logger.IsEnabled(LogLevel.Debug))
                     _logger.LogDebug("The value for parameter '{ParameterName}' was not found in the request, attempting to add default value.", param.Name);
 
-                return param.HasDefaultValue ? param.DefaultValue : Activator.CreateInstance(param.ParameterType);
+                return new BindResult(true, param.HasDefaultValue ? param.DefaultValue : Activator.CreateInstance(param.ParameterType), null);
             }
 
             // Handle reference types or nullable value types
@@ -198,22 +287,22 @@ public class EndpointHandler
             {
                 if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
                 {
-                    return await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken);
+                    return new BindResult(true, await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken), null);
                 }
-                
+
                 if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
                 {
-                    return await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken);
+                    return new BindResult(true, await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken), null);
                 }
             }
-          
+
             _logger.LogDebug("No value found for parameter '{ParameterName}'", param.Name);
-            return param.HasDefaultValue ? param.DefaultValue : null;
+            return new BindResult(true, param.HasDefaultValue ? param.DefaultValue : null, null);
         }
         catch (Exception pex)
         {
             _logger.LogError(pex, "An error occured while trying to bind value for parameter: {ParameterName}", param.Name);
-            return null;
+            return new BindResult(false, rawValue!, pex.Message); ;
         }
     }
 
@@ -316,3 +405,5 @@ public class MethodDetails
         parameters = Parameters;
     }
 }
+
+public record BindResult(bool Success, object? Value, string? ErrorMessage);

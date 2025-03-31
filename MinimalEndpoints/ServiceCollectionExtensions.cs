@@ -6,7 +6,6 @@ using MinimalEndpoints.Extensions.Http.ModelBinding;
 using MinimalEndpoints.Extensions;
 using System.Reflection;
 using System.Collections.Concurrent;
-using static MinimalEndpoints.EndpointHandler;
 
 namespace MinimalEndpoints;
 
@@ -17,24 +16,14 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services"></param>
     /// <returns></returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services)
-        => services.AddMinimalEndpoints([], scanAssemblies: true);
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="services"></param>
-    /// <returns></returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, bool scanAssemblies)
-        => services.AddMinimalEndpoints([], scanAssemblies: scanAssemblies);
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="services"></param>
-    /// <returns></returns>
     public static IServiceCollection AddMinimalEndpointFromCallingAssembly(this IServiceCollection services)
-        => services.AddMinimalEndpoints([], entryAssembly: Assembly.GetCallingAssembly(), scanAssemblies: false);
+        => services.AddMinimalEndpoints(opts =>
+        {
+            opts.EndpointMarkerAssembly = marker =>
+            {
+                marker.AddAssembly(Assembly.GetCallingAssembly());
+            };
+        });
     /// <summary>
     /// Registers endpoint from assemblies that contain specified types
     /// </summary>
@@ -42,7 +31,14 @@ public static class ServiceCollectionExtensions
     /// <param name="endpointAssemblyMarkerTypes">Marker type used to scan assembly</param>
     /// <returns>Service Collection</returns>
     public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Type[] endpointAssemblyMarkerTypes)
-        => services.AddMinimalEndpoints(endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+        => services.AddMinimalEndpoints(opts =>
+        {
+            opts.EndpointMarkerAssembly = marker =>
+            {
+                marker.AddAssemblies(endpointAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+            };
+        });
+
     /// <summary>
     /// Registers endpoints from the specified assemblies
     /// </summary>
@@ -50,7 +46,13 @@ public static class ServiceCollectionExtensions
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
     public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, params Assembly[] assemblies)
-        => services.AddMinimalEndpoints(assemblies.Select(a => a));
+        => services.AddMinimalEndpoints(opts =>
+        {
+            opts.EndpointMarkerAssembly = marker =>
+            {
+               marker.AddAssemblies(assemblies);
+            }; 
+        });
 
     /// <summary>
     /// Registers commands from the specified assemblies
@@ -58,21 +60,32 @@ public static class ServiceCollectionExtensions
     /// <param name="services">IServiceCollection instance</param>
     /// <param name="assemblies">Assemblies to scan</param>
     /// <returns>Service Collection</returns>
-    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, IEnumerable<Assembly> assemblies, Assembly entryAssembly = null!, bool scanAssemblies = true)
+    public static IServiceCollection AddMinimalEndpoints(this IServiceCollection services, Action<MinimalEndpointsOptions>? configure = null)
     {
-        if (assemblies == null || !assemblies.Any())
+        var options = new MinimalEndpointsOptions();
+        configure?.Invoke(options);
+
+        if (options.BindingFailurePolicy is not null)
         {
-            assemblies = scanAssemblies
-                ? AppDomain.CurrentDomain.GetAssemblies()
-                : entryAssembly is not null ? [entryAssembly] : Array.Empty<Assembly>();
+            services.AddSingleton(options.BindingFailurePolicy);
+        }
+
+        var markerCollection = new MinimalEndpointAssemblyMarkerCollection();
+
+        if (options.EndpointMarkerAssembly != null)
+        {
+            options.EndpointMarkerAssembly(markerCollection);
+        }
+        else
+        {
+            markerCollection.AddAssemblies(AppDomain.CurrentDomain.GetAssemblies());
         }
 
         var interfaceTypes = new[] { typeof(IEndpoint), typeof(IEndpointDefinition) };
 
-        List<Assembly> assemblyList = assemblies.ToList();
-        for (int i = 0; i < assemblyList.Count; i++)
+        for (int i = 0; i < markerCollection.Assemblies.Count; i++)
         {
-            Assembly? assembly = assemblyList[i];
+            Assembly assembly = markerCollection.Assemblies[i];
             var definedTypes = assembly.DefinedTypes.ToList();
 
             for (int n = 0; n < definedTypes.Count; n++)

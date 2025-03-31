@@ -166,10 +166,17 @@ public static class EndpointRouteBuilderExtensions
 
                 var (isOverridden, MapEndpoint) = IsMapEndpointOverridden(endpoint.GetType());
 
-                RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) =>
+                RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, async ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) =>
                 {
                     var endpointHandler = sp.GetRequiredService<EndpointHandler>();
-                    return endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken);
+                    var resp =  await endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken);
+                    if (request.HttpContext.Response.HasStarted)
+                    {
+                        // Return an empty result so the framework doesn't try to write again.
+                        return Results.Empty;
+                    }
+
+                    return resp;
                 });
                 mappedCount++;
 
