@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using MinimalEndpoints.WebApiDemo.Endpoints.Attributes;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
 /// <summary>
@@ -13,6 +14,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints;
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+[Cache(600)] // Example: Custom metadata attribute for caching (10 minutes)
 public class GetCustomerById : IEndpoint
 {
     private readonly ICustomerRepository _customerRepository;
@@ -56,6 +58,7 @@ public class GetCustomerById : IEndpoint
     /// <response code="200">Returns the customer for specified id</response>
     /// <response code="404">Customer not found</response>
     [HandlerMethod]
+    [FeatureFlag("enable-customer-details")] // Example: Method-level custom metadata attribute
     public Task<Customer> SendAsync([FromRoute] int id, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_customerRepository.GetById(id));

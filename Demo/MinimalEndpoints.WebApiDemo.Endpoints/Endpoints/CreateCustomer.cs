@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MinimalEndpoints.Extensions.Validation;
+using MinimalEndpoints.WebApiDemo.Endpoints.Attributes;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
 {
@@ -15,6 +16,7 @@ namespace MinimalEndpoints.WebApiDemo.Endpoints.Endpoints
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [Accept(typeof(CustomerWrapper<CustomerDto>), "application/json", AdditionalContentTypes = ["application/xml"])]
     [Endpoint(TagName = "Customer", OperationId = nameof(CreateCustomer))]
+    [FeatureFlag("enable-customer-creation")] // Example: Custom metadata attribute for feature flagging
     public class CreateCustomer : EndpointBase, IEndpoint
     {
         private readonly ICustomerRepository _repository;

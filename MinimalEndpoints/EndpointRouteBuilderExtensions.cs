@@ -117,7 +117,13 @@ public static class EndpointRouteBuilderExtensions
                 if (!string.IsNullOrEmpty(serviceConfig.DefaultRoutePrefix))
                     pattern = $"{serviceConfig.DefaultRoutePrefix.TrimEnd('/')}/{pattern.TrimStart('/')}";
 
-                var tagAttr = (EndpointAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EndpointAttribute)).FirstOrDefault();
+                var endpointType = endpoint.GetType();
+                var typeInfo = endpointType.GetTypeInfo();
+
+                // Cache all class-level attributes once
+                var classAttributes = typeInfo.GetCustomAttributes(inherit: true).ToList();
+
+                var tagAttr = classAttributes.OfType<EndpointAttribute>().FirstOrDefault();
 
                 if (!string.IsNullOrWhiteSpace(tagAttr?.RoutePrefixOverride))
                 {
@@ -133,38 +139,24 @@ public static class EndpointRouteBuilderExtensions
 
                 var routeName = tagAttr?.RouteName ?? string.Empty;
 
-                // Create and add the descriptor to the collection
-                var handlerMethodInfo = endpoint.GetType()
+                // Get handler method and its attributes
+                var handlerMethodInfo = endpointType
                     .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                     .FirstOrDefault(m => m.IsDefined(typeof(HandlerMethodAttribute), inherit: false))
                     ?? endpoint.Handler.Method;
 
-                var sb = StringBuilderPool.Get();
-                try
-                {
-                    sb.Append(handlerMethodInfo.DeclaringType?.FullName);
-                    sb.Append('.');
-                    sb.Append(handlerMethodInfo.Name);
-                    sb.Append('(');
+                // Cache method-level attributes if enabled
+                var methodAttributes = serviceConfig.IncludeMethodAttributes && handlerMethodInfo != null
+                    ? handlerMethodInfo.GetCustomAttributes(inherit: true).OfType<Attribute>().ToList()
+                    : [];
 
-                    var parameters = handlerMethodInfo.GetParameters();
-                    for (int i = 0; i < parameters.Length; i++)
-                    {
-                        if (i > 0) sb.Append(',');
-                        sb.Append(GetParameterTypeName(parameters[i].ParameterType));
-                    }
-                    sb.Append(')');
+                // Combine all attributes for processing
+                var allAttributes = classAttributes.Cast<Attribute>().Concat(methodAttributes).ToList();
 
-                    var handlerMethodName = sb.ToString();
-                    endpointDescriptors.Add(new EndpointDescriptor(name, endpoint.GetType().FullName!, pattern, endpoint.Method.Method, handlerMethodInfo.Name, handlerMethodName, routeName!));
-                }
-                finally
-                {
-                    sb.Clear();
-                    StringBuilderPool.Return(sb);
-                }
+                // Collect metadata for EndpointDescriptor (will be populated as we register)
+                var collectedMetadata = new List<object>();
 
-                var (isOverridden, MapEndpoint) = IsMapEndpointOverridden(endpoint.GetType());
+                var (isOverridden, MapEndpoint) = IsMapEndpointOverridden(endpointType);
 
                 RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) =>
                 {
@@ -173,21 +165,23 @@ public static class EndpointRouteBuilderExtensions
                 });
                 mappedCount++;
 
-                mapping.WithMetadata(new HttpMethodMetadata(methods))
+                // Register standard metadata
+                var httpMethodMetadata = new HttpMethodMetadata(methods);
+                mapping.WithMetadata(httpMethodMetadata)
                     .WithDisplayName(name);
+                collectedMetadata.Add(httpMethodMetadata);
 
                 if (!string.IsNullOrWhiteSpace(tagAttr?.RouteName))
                 {
                     mapping.WithName(tagAttr.RouteName);
-                    mapping.WithMetadata(new EndpointNameMetadata(tagAttr.RouteName));
+                    var endpointNameMetadata = new EndpointNameMetadata(tagAttr.RouteName);
+                    mapping.WithMetadata(endpointNameMetadata);
+                    collectedMetadata.Add(endpointNameMetadata);
                 }
 
-
+                // Handle ProducesResponseType attributes
                 var globalProduces = serviceConfig.Filters.OfType<ProducesResponseTypeAttribute>();
-
-                var producesRespAttributes = ((ProducesResponseTypeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(ProducesResponseTypeAttribute)))
-                        .ToList();
-
+                var producesRespAttributes = classAttributes.OfType<ProducesResponseTypeAttribute>().ToList();
                 if (globalProduces.Any()) producesRespAttributes.AddRange(globalProduces);
 
                 foreach (var attr in producesRespAttributes)
@@ -211,15 +205,18 @@ public static class EndpointRouteBuilderExtensions
                     }
 
                     mapping.Produces(attr.StatusCode, responseType: attr.Type);
-                    mapping.WithMetadata(new ProducesResponseTypeMetadata(attr.StatusCode, attr.Type));    
+                    var producesMetadata = new ProducesResponseTypeMetadata(attr.StatusCode, attr.Type);
+                    mapping.WithMetadata(producesMetadata);
+                    collectedMetadata.Add(producesMetadata);
                 }
 
+                // Register endpoint filters
                 foreach (var filter in serviceConfig.EndpointFilters)
                 {
                     mapping.AddEndpointFilter(filter);
                 }
 
-                if (typeof(EndpointBase).IsAssignableFrom(endpoint.GetType()))
+                if (typeof(EndpointBase).IsAssignableFrom(endpointType))
                 {
                     var ep = (EndpointBase)endpoint;
                     foreach (var filter in ep.EndpointFilters)
@@ -228,19 +225,22 @@ public static class EndpointRouteBuilderExtensions
                     }
                 }
 
-                var anonAttr = (AllowAnonymousAttribute?)endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AllowAnonymousAttribute)).FirstOrDefault();
+                // Handle authorization attributes
+                var anonAttr = classAttributes.OfType<AllowAnonymousAttribute>().FirstOrDefault();
                 if (anonAttr != null)
                     mapping.AllowAnonymous();
                 else
                 {
-                    var authorizeAttributes = (AuthorizeAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AuthorizeAttribute));
+                    var authorizeAttributes = classAttributes.OfType<AuthorizeAttribute>();
                     foreach (var authData in authorizeAttributes) mapping.RequireAuthorization(authData);
                 }
 
-                var corsAttributes = (EnableCorsAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(EnableCorsAttribute));
+                // Handle CORS attributes
+                var corsAttributes = classAttributes.OfType<EnableCorsAttribute>();
                 foreach (var corsAttr in corsAttributes) mapping.RequireCors(corsAttr.PolicyName!);
 
-                var acceptedAttributes = (AcceptAttribute[])endpoint.GetType().GetTypeInfo().GetCustomAttributes(typeof(AcceptAttribute));
+                // Handle Accept attributes
+                var acceptedAttributes = classAttributes.OfType<AcceptAttribute>();
                 foreach (var acceptAttr in acceptedAttributes)
                 {
                     if (acceptAttr.AdditionalContentTypes != null)
@@ -249,30 +249,102 @@ public static class EndpointRouteBuilderExtensions
                         mapping.Accepts(acceptAttr.Type, acceptAttr.IsOptional, acceptAttr.ContentType);
                 }
 
-                if (tagAttr == null) continue;
-
-                if (tagAttr.ExcludeFromDescription) mapping.ExcludeFromDescription();
-
-                if (!string.IsNullOrWhiteSpace(tagAttr.TagName)) mapping.WithTags(tagAttr.TagName);
-
-                if (!string.IsNullOrWhiteSpace(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
-
-                if (!string.IsNullOrWhiteSpace(tagAttr.Description)) mapping.WithDescription(tagAttr.Description);
-
-                if (!string.IsNullOrWhiteSpace(tagAttr.GroupName))
-                    mapping.WithGroupName(tagAttr.GroupName);
-                else if (serviceConfig.DefaultGroupName is { })
-                    mapping.WithGroupName(serviceConfig.DefaultGroupName);
-
-                if (!string.IsNullOrWhiteSpace(serviceConfig.DefaultRateLimitingPolicyName))
-                    mapping.RequireRateLimiting(serviceConfig.DefaultRateLimitingPolicyName);
-
-                if (tagAttr.RateLimitingPolicyName is { } || tagAttr.DisableRateLimiting is { })
+                // Handle EndpointAttribute properties
+                if (tagAttr != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(tagAttr.RateLimitingPolicyName))
-                        mapping.RequireRateLimiting(tagAttr.RateLimitingPolicyName);
-                    else if (tagAttr.DisableRateLimiting)
-                        mapping.DisableRateLimiting();
+                    if (tagAttr.ExcludeFromDescription) mapping.ExcludeFromDescription();
+
+                    if (!string.IsNullOrWhiteSpace(tagAttr.TagName)) mapping.WithTags(tagAttr.TagName);
+
+                    if (!string.IsNullOrWhiteSpace(tagAttr.OperationId)) mapping.WithName(tagAttr.OperationId);
+
+                    if (!string.IsNullOrWhiteSpace(tagAttr.Description)) mapping.WithDescription(tagAttr.Description);
+
+                    if (!string.IsNullOrWhiteSpace(tagAttr.GroupName))
+                        mapping.WithGroupName(tagAttr.GroupName);
+                    else if (serviceConfig.DefaultGroupName is { })
+                        mapping.WithGroupName(serviceConfig.DefaultGroupName);
+
+                    if (!string.IsNullOrWhiteSpace(serviceConfig.DefaultRateLimitingPolicyName))
+                        mapping.RequireRateLimiting(serviceConfig.DefaultRateLimitingPolicyName);
+
+                    if (tagAttr.RateLimitingPolicyName is { } || tagAttr.DisableRateLimiting is { })
+                    {
+                        if (!string.IsNullOrWhiteSpace(tagAttr.RateLimitingPolicyName))
+                            mapping.RequireRateLimiting(tagAttr.RateLimitingPolicyName);
+                        else if (tagAttr.DisableRateLimiting)
+                            mapping.DisableRateLimiting();
+                    }
+                }
+
+                // Register custom metadata attributes
+                if (serviceConfig.AutoRegisterMetadataAttributes)
+                {
+                    var customMetadataAttributes = allAttributes
+                        .OfType<IEndpointMetadataAttribute>()
+                        .Where(attr => !serviceConfig.ExcludedAttributeTypes.Contains(attr.GetType()))
+                        .ToList();
+
+                    foreach (var metadataAttr in customMetadataAttributes)
+                    {
+                        try
+                        {
+                            var metadata = metadataAttr.GetMetadata();
+                            foreach (var meta in metadata)
+                            {
+                                mapping.WithMetadata(meta);
+                                collectedMetadata.Add(meta);
+                            }
+
+                            if (logger.IsEnabled(LogLevel.Trace))
+                            {
+                                logger.LogTrace("Registered metadata from attribute {AttributeType} on endpoint {EndpointType}",
+                                    metadataAttr.GetType().Name, endpointType.Name);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogWarning(ex,
+                                "Failed to register metadata from attribute {AttributeType} on endpoint {EndpointType}",
+                                metadataAttr.GetType().Name, endpointType.Name);
+                        }
+                    }
+                }
+
+                // Create handler method name for descriptor
+                var sb = StringBuilderPool.Get();
+                try
+                {
+                    sb.Append(handlerMethodInfo.DeclaringType?.FullName);
+                    sb.Append('.');
+                    sb.Append(handlerMethodInfo.Name);
+                    sb.Append('(');
+
+                    var parameters = handlerMethodInfo.GetParameters();
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        if (i > 0) sb.Append(',');
+                        sb.Append(GetParameterTypeName(parameters[i].ParameterType));
+                    }
+                    sb.Append(')');
+
+                    var handlerMethodName = sb.ToString();
+                    
+                    // Add descriptor with collected metadata
+                    endpointDescriptors.Add(new EndpointDescriptor(
+                        name, 
+                        endpointType.FullName!, 
+                        pattern, 
+                        endpoint.Method.Method, 
+                        handlerMethodInfo.Name, 
+                        handlerMethodName, 
+                        routeName!,
+                        collectedMetadata));
+                }
+                finally
+                {
+                    sb.Clear();
+                    StringBuilderPool.Return(sb);
                 }
             }
             catch (Exception ex)

@@ -1,12 +1,14 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MinimalEndpoints.Extensions.Http;
+using MinimalEndpoints.WebApiDemo.Endpoints.Attributes;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
 
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Customer>))]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized, "application/json", "application/xml")]
 [Endpoint(TagName = "Customer", Description = "Description from attributes", OperationId = nameof(GetAllCustomers))]
+[Cache(300, VaryByHeader = "X-Client-Id")] // Example: Class-level custom metadata attribute for caching
 public class GetAllCustomers : EndpointBase, IEndpoint
 {
     private readonly ICustomerRepository _customerRepository;

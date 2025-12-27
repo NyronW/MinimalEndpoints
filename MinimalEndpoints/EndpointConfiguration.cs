@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
@@ -31,6 +34,31 @@ public sealed class EndpointConfiguration
     /// </summary>
     public string? DefaultRateLimitingPolicyName { get; set; }
 
+    /// <summary>
+    /// If true, automatically registers attributes implementing IEndpointMetadataAttribute.
+    /// Default: true.
+    /// </summary>
+    public bool AutoRegisterMetadataAttributes { get; set; } = true;
+
+    /// <summary>
+    /// If true, includes handler method attributes in metadata discovery.
+    /// Default: true.
+    /// </summary>
+    public bool IncludeMethodAttributes { get; set; } = true;
+
+    /// <summary>
+    /// Attribute types to exclude from automatic registration.
+    /// </summary>
+    public HashSet<Type> ExcludedAttributeTypes { get; set; } = new()
+    {
+        typeof(EndpointAttribute),
+        typeof(ProducesResponseTypeAttribute),
+        typeof(AuthorizeAttribute),
+        typeof(AllowAnonymousAttribute),
+        typeof(EnableCorsAttribute),
+        typeof(AcceptAttribute),
+        typeof(HandlerMethodAttribute)
+    };
 
     public FilterCollection Filters { get; set; } = [];
 

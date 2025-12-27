@@ -1,4 +1,6 @@
-﻿namespace MinimalEndpoints;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace MinimalEndpoints;
 
 public sealed class EndpointDescriptor
 {
@@ -9,8 +11,10 @@ public sealed class EndpointDescriptor
     public string HandlerMethod { get; }
     public string HandlerIdentifier { get; }
     public string RouteName { get; }
+    public EndpointMetadataCollection? Metadata { get; }
 
-    public EndpointDescriptor(string name, string className, string pattern, string httpMethod, string handlerMethod, string handlerIdentifier, string routeName = "")
+    public EndpointDescriptor(string name, string className, string pattern, string httpMethod, string handlerMethod, string handlerIdentifier, string routeName = "",
+        IReadOnlyList<object>? metadata = null)
     {
         Name = name;
         ClassName = className;
@@ -19,6 +23,7 @@ public sealed class EndpointDescriptor
         HandlerMethod = handlerMethod;
         HandlerIdentifier = handlerIdentifier;
         RouteName = routeName;
+        Metadata = metadata != null ? new(metadata) : new();
     }
 }
 

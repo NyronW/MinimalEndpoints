@@ -177,7 +177,6 @@ public static class HttpExtensions
         return selectedNegotiator.Handle(response.HttpContext, obj, statusCode, contentType, cancellationToken);
     }
 
-
     #region Helper
     private static bool HasXmlContentType(this HttpRequest request, out StringSegment charset)
     {
