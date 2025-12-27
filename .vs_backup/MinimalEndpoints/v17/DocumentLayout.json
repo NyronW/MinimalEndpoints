@@ -1,0 +1,295 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{04F0B672-9D06-4271-9CA9-BE97320B5C3B}|Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo\\minimalendpoints.webapidemo.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{04F0B672-9D06-4271-9CA9-BE97320B5C3B}|Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj|solutionrelative:demo\\minimalendpoints.webapidemo\\minimalendpoints.webapidemo.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo.endpoints\\minimalendpoints.webapidemo.endpoints.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|solutionrelative:demo\\minimalendpoints.webapidemo.endpoints\\minimalendpoints.webapidemo.endpoints.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\minimalendpoints.swashbuckle.aspnetcore.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\minimalendpoints.swashbuckle.aspnetcore.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{04F0B672-9D06-4271-9CA9-BE97320B5C3B}|Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo\\endpoints\\todo\\createtodoitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{04F0B672-9D06-4271-9CA9-BE97320B5C3B}|Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj|solutionrelative:demo\\minimalendpoints.webapidemo\\endpoints\\todo\\createtodoitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\endpointxmlcommentsdocumentfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\endpointxmlcommentsdocumentfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\updatecustomer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|solutionrelative:demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\updatecustomer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\getcustomerbyid.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|solutionrelative:demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\getcustomerbyid.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\createcustomer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|solutionrelative:demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\createcustomer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\getallcustomers.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8DC9B501-161E-4ED5-B48E-87A58077158C}|Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj|solutionrelative:demo\\minimalendpoints.webapidemo.endpoints\\endpoints\\getallcustomers.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\iservicecollectionextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\iservicecollectionextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\swaggergenoptionsextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\swaggergenoptionsextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\xmlcommentsreader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\xmlcommentsreader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\xmlcomments.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\xmlcomments.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A4310D4F-F4D5-45A3-BF54-0849F93C9014}|MinimalEndpoints\\MinimalEndpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints\\endpointroutebuilderextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A4310D4F-F4D5-45A3-BF54-0849F93C9014}|MinimalEndpoints\\MinimalEndpoints.csproj|solutionrelative:minimalendpoints\\endpointroutebuilderextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A4310D4F-F4D5-45A3-BF54-0849F93C9014}|MinimalEndpoints\\MinimalEndpoints.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints\\endpointhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A4310D4F-F4D5-45A3-BF54-0849F93C9014}|MinimalEndpoints\\MinimalEndpoints.csproj|solutionrelative:minimalendpoints\\endpointhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\routetemplatecasedocumentfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\routetemplatecasedocumentfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|c:\\users\\nyron\\source\\repos\\minimalendpoints\\minimalendpoints.swashbuckle.aspnetcore\\httpmethodextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{51C0178E-49E2-4E9E-88FC-E6B482350B74}|MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj|solutionrelative:minimalendpoints.swashbuckle.aspnetcore\\httpmethodextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MinimalEndpoints.WebApiDemo.csproj",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo\\MinimalEndpoints.WebApiDemo.csproj",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-01-16T22:37:13.122Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "CreateTodoItem.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo\\Endpoints\\Todo\\CreateTodoItem.cs",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo\\Endpoints\\Todo\\CreateTodoItem.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo\\Endpoints\\Todo\\CreateTodoItem.cs",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo\\Endpoints\\Todo\\CreateTodoItem.cs",
+              "ViewState": "AQIAACIAAAAAAAAAAAAkwDMAAAAJAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-16T22:13:40.763Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MinimalEndpoints.Swashbuckle.AspNetCore.csproj",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\MinimalEndpoints.Swashbuckle.AspNetCore.csproj",
+              "ViewState": "AQIAAAgAAAAAAAAAAABRwAIAAAARAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-01-07T03:27:53.952Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MinimalEndpoints.WebApiDemo.Endpoints.csproj",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\MinimalEndpoints.WebApiDemo.Endpoints.csproj",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA0AAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-01-16T22:28:51.355Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "SwaggerGenOptionsExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\SwaggerGenOptionsExtensions.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\SwaggerGenOptionsExtensions.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\SwaggerGenOptionsExtensions.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\SwaggerGenOptionsExtensions.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T03:28:23.483Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "UpdateCustomer.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\UpdateCustomer.cs",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\UpdateCustomer.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\UpdateCustomer.cs",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\UpdateCustomer.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABUAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-08T10:19:34.767Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "XmlCommentsReader.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\XmlCommentsReader.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\XmlCommentsReader.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\XmlCommentsReader.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\XmlCommentsReader.cs",
+              "ViewState": "AQIAAAcAAAAAAAAAAAAgwAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T03:28:18.094Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "XmlComments.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\XmlComments.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\XmlComments.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\XmlComments.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\XmlComments.cs",
+              "ViewState": "AQIAABMAAAAAAAAAAAAYwAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T03:28:13.874Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "EndpointXmlCommentsDocumentFilter.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\EndpointXmlCommentsDocumentFilter.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\EndpointXmlCommentsDocumentFilter.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\EndpointXmlCommentsDocumentFilter.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\EndpointXmlCommentsDocumentFilter.cs",
+              "ViewState": "AQIAAEMAAAAAAAAAAIBZwF4AAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:53:47.148Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "IServiceCollectionExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\IServiceCollectionExtensions.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\IServiceCollectionExtensions.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\IServiceCollectionExtensions.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\IServiceCollectionExtensions.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAswBYAAAAJAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T03:28:57.504Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "CreateCustomer.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\CreateCustomer.cs",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\CreateCustomer.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\CreateCustomer.cs",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\CreateCustomer.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-08T10:19:27.634Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "EndpointHandler.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints\\EndpointHandler.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints\\EndpointHandler.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints\\EndpointHandler.cs",
+              "RelativeToolTip": "MinimalEndpoints\\EndpointHandler.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:52:08.887Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "RouteTemplateCaseDocumentFilter.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\RouteTemplateCaseDocumentFilter.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\RouteTemplateCaseDocumentFilter.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\RouteTemplateCaseDocumentFilter.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\RouteTemplateCaseDocumentFilter.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:51:52.724Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "HttpMethodExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\HttpMethodExtensions.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints.Swashbuckle.AspNetCore\\HttpMethodExtensions.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints.Swashbuckle.AspNetCore\\HttpMethodExtensions.cs",
+              "RelativeToolTip": "MinimalEndpoints.Swashbuckle.AspNetCore\\HttpMethodExtensions.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:51:45.764Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "GetCustomerById.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetCustomerById.cs",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetCustomerById.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetCustomerById.cs",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetCustomerById.cs",
+              "ViewState": "AQIAAAYAAAAAAAAAAIBZwCkAAAAHAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:44:23.379Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "GetAllCustomers.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetAllCustomers.cs",
+              "RelativeDocumentMoniker": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetAllCustomers.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetAllCustomers.cs",
+              "RelativeToolTip": "Demo\\MinimalEndpoints.WebApiDemo.Endpoints\\Endpoints\\GetAllCustomers.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABkAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:44:22.518Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "EndpointRouteBuilderExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints\\EndpointRouteBuilderExtensions.cs",
+              "RelativeDocumentMoniker": "MinimalEndpoints\\EndpointRouteBuilderExtensions.cs",
+              "ToolTip": "C:\\Users\\NYRON\\source\\repos\\MinimalEndpoints\\MinimalEndpoints\\EndpointRouteBuilderExtensions.cs",
+              "RelativeToolTip": "MinimalEndpoints\\EndpointRouteBuilderExtensions.cs",
+              "ViewState": "AQIAAFMAAAAAAAAAAAAwwIEAAAARAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-07T02:42:03.804Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

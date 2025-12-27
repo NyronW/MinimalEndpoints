@@ -11,7 +11,7 @@
     <PackageProjectUrl></PackageProjectUrl>
     <RepositoryUrl>https://github.com/NyronW/MinimalEndpoints.Swashbuckle.AspNetCore</RepositoryUrl>
     <PackageTags>ASP.NET; Minimal API; SWAGGER; OPENAPI; Endpoint; REPR; C#; .NET</PackageTags>
-    <Version>1.2.0</Version>
+    <Version>1.1.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
@@ -22,10 +22,12 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.3.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
-    <PackageReference Include="MinimalEndpoints" Version="1.5.0" />
+    <PackageReference Include="MinimalEndpoints" Version="1.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.0.0" />
   </ItemGroup>
+  
+  <!--<ItemGroup>
+    <ProjectReference Include="..\MinimalEndpoints\MinimalEndpoints.csproj" />
+  </ItemGroup>-->
 
 </Project>

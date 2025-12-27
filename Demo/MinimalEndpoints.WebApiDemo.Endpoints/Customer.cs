@@ -38,4 +38,6 @@ public class CustomerDto
 
     [Required]
     public string LastName { get; set; }
+
+    public decimal Salary { get; set; }
 }

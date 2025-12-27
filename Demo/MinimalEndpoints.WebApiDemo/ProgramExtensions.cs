@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using MinimalEndpoints.Extensions.Http;
 using MinimalEndpoints.Authorization;
+using Microsoft.AspNetCore.Http.Extensions;
 
 namespace MinimalEndpoints.WebApiDemo;
 
@@ -22,7 +23,22 @@ public static class ProgramExtensions
         builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 
 
-        builder.Services.AddMinimalEndpoints();
+        builder.Services.AddMinimalEndpoints(options =>
+        {
+            options.BindingFailurePolicy = async bindingContext =>
+            {
+                bindingContext.HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+                var problemDetails = new ProblemDetails
+                {
+                    Type = "/api-errors/bad-reqest",
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Binding error occured",
+                    Detail = $"Could not bind parameter '{bindingContext.ParameterName}'.",
+                    Instance = bindingContext.HttpContext.Request.GetEncodedUrl()
+                };
+                await bindingContext.HttpContext.Response.WriteAsJsonAsync(problemDetails);
+            };
+        });
         builder.Services.AddMinimalEndpointSwaggerGen();
 
         builder.Services.AddCustomerServices(); //Add services for support class library

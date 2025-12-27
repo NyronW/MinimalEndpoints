@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using MinimalEndpoints.WebApiDemo.Endpoints.Attributes;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
 /// <summary>
@@ -27,7 +26,7 @@ public class GetCustomerById : IEndpoint
         _customerRepository = customerRepository;
     }
 
-    public string Pattern => "/customers/{id}";
+    public string Pattern => "/customers/{id:int}";
 
     public HttpMethod Method => HttpMethod.Get;
 
