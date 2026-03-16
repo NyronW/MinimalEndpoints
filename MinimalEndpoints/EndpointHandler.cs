@@ -249,6 +249,9 @@ public class EndpointHandler
                     rawValue = routeString;
                     return new BindResult(true, ConvertParameter(routeString, param.ParameterType), null);
                 }
+                // [FromRoute] but no value in route -> use default, do not fall through to body
+                _logger.LogDebug("No value found for parameter '{ParameterName}' in route.", param.Name);
+                return new BindResult(true, GetDefaultValueForParameter(param), null);
             }
 
             if (param.GetCustomAttribute<FromQueryAttribute>() is { } fromQueryAttribute)
@@ -258,6 +261,9 @@ public class EndpointHandler
                     rawValue = queryValue[0]!;
                     return new BindResult(true, ConvertParameter(queryValue[0]!, param.ParameterType), null);
                 }
+                // [FromQuery] but no value in query -> use default, do not fall through to body
+                _logger.LogDebug("No value found for parameter '{ParameterName}' in query.", param.Name);
+                return new BindResult(true, GetDefaultValueForParameter(param), null);
             }
 
             if (param.GetCustomAttribute<FromHeaderAttribute>() is { } fromHeaderAttribute)
@@ -267,6 +273,9 @@ public class EndpointHandler
                     rawValue = headerValue[0]!;
                     return new BindResult(true, ConvertParameter(headerValue[0]!, param.ParameterType), null);
                 }
+                // [FromHeader] but no value in header -> use default, do not fall through to body
+                _logger.LogDebug("No value found for parameter '{ParameterName}' in header.", param.Name);
+                return new BindResult(true, GetDefaultValueForParameter(param), null);
             }
 
             if (param.GetCustomAttribute<FromBodyAttribute>() != null)

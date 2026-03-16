@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
+using MinimalEndpoints.WebApiDemo.Endpoints.Attributes;
 
 namespace MinimalEndpoints.WebApiDemo.Endpoints;
 /// <summary>
