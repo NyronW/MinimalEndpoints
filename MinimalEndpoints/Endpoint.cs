@@ -1,4 +1,4 @@
-﻿namespace MinimalEndpoints;
+namespace MinimalEndpoints;
 
 public abstract class Endpoint<TResponse> : EndpointBase, IEndpoint
 {
@@ -12,7 +12,7 @@ public abstract class Endpoint<TResponse> : EndpointBase, IEndpoint
 
     protected virtual async Task<TResponse> HandlerCore(CancellationToken cancellationToken = default)
     {
-        return await SendAsync(cancellationToken);
+        return await SendAsync(cancellationToken).ConfigureAwait(false);
     }
 }
 

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.32112.339
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11520.95 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints", "MinimalEndpoints\MinimalEndpoints.csproj", "{A4310D4F-F4D5-45A3-BF54-0849F93C9014}"
 EndProject
@@ -24,6 +24,11 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalEndpoints.Swashbuckle.AspNetCore", "MinimalEndpoints.Swashbuckle.AspNetCore\MinimalEndpoints.Swashbuckle.AspNetCore.csproj", "{51C0178E-49E2-4E9E-88FC-E6B482350B74}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalEndpoints.WebApiDemo", "Demo\MinimalEndpoints.WebApiDemo\MinimalEndpoints.WebApiDemo.csproj", "{9EA7B694-35A2-4B3F-830C-9C727A8D8D6A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F3AEBBE8-8EBD-46E0-94A7-D1463D1EAEF6}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

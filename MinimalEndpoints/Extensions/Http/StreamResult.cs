@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
 namespace MinimalEndpoints.Extensions.Http;
@@ -20,11 +20,11 @@ public class StreamResult<T> : IResult
 
         await using var streamWriter = new StreamWriter(new BufferedStream(httpContext.Response.Body), leaveOpen: true);
 
-        await foreach (var item in _dataStream)
+        await foreach (var item in _dataStream.ConfigureAwait(false))
         {
-            await JsonSerializer.SerializeAsync(streamWriter.BaseStream, item, _options);
-            await streamWriter.WriteLineAsync();
-            await streamWriter.FlushAsync();
+            await JsonSerializer.SerializeAsync(streamWriter.BaseStream, item, _options).ConfigureAwait(false);
+            await streamWriter.WriteLineAsync().ConfigureAwait(false);
+            await streamWriter.FlushAsync().ConfigureAwait(false);
         }
     }
 }

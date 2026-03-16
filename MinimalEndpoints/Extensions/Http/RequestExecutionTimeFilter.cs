@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -17,7 +17,7 @@ public sealed class RequestExecutionTimeFilter(ILogger<RequestExecutionTimeFilte
 
         try
         {
-            var result = await next(context);
+            var result = await next(context).ConfigureAwait(false);
             return result;
         }
         catch (Exception ex)

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 using System.Xml.Serialization;
 
@@ -29,6 +29,6 @@ public class XmlResponseNegotiator : ContentNegotiatorBase, IResponseNegotiator
         if (statusCode.HasValue) httpContext.Response.StatusCode = statusCode.Value;
 
         // Write the memory stream to the response Body
-        await ms.CopyToAsync(httpContext.Response.Body, cancellationToken);
+        await ms.CopyToAsync(httpContext.Response.Body, cancellationToken).ConfigureAwait(false);
     }
 }

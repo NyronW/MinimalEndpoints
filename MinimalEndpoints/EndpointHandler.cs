@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -41,7 +41,9 @@ public class EndpointHandler
             var endpointName = endpoint.GetType().FullName;
             using var _ = _logger.AddContext(_endpointCorrIdName, endpointName);
 
+            var minimalOptions = sp.GetService<MinimalEndpointsOptions>();
             Func<BindingFailureContext, Task>? bindingFailurePolicy = sp.GetService<Func<BindingFailureContext, Task>>();
+            bool useDefaultOnBindingFailure = minimalOptions?.UseDefaultValueOnBindingFailure ?? false;
             var context = request.HttpContext;
 
             try
@@ -61,7 +63,7 @@ public class EndpointHandler
                 if (isOverridden)
                 {
                     _logger.LogDebug("Executing custom BindAsync method for endpoint");
-                    var boundArgs = await (ValueTask<object[]>)BindAsync.Invoke(ep, [request, cancellationToken])!;
+                    var boundArgs = await ((ValueTask<object[]>)BindAsync.Invoke(ep, [request, cancellationToken])!).ConfigureAwait(false);
 
                     if (boundArgs.Length != parameters.Length)
                     {
@@ -72,9 +74,15 @@ public class EndpointHandler
 
                         for (int i = boundArgs.Length; i < parameters.Length; i++)
                         {
-                            var bindResult = await BindParameter(parameters[i], sp, request, cancellationToken);
+                            var bindResult = await BindParameter(parameters[i], sp, request, cancellationToken).ConfigureAwait(false);
                             if (!bindResult.Success)
                             {
+                                if (useDefaultOnBindingFailure)
+                                {
+                                    argsWithDefaults[i] = GetDefaultValueForParameter(parameters[i]);
+                                    continue;
+                                }
+
                                 var bindingContext = new BindingFailureContext(
                                     context,
                                     parameters[i].Name ?? string.Empty,
@@ -86,7 +94,7 @@ public class EndpointHandler
                                 if (bindingFailurePolicy is not null)
                                 {
                                     // 1) Let the user handle it
-                                    await bindingFailurePolicy(bindingContext);
+                                    await bindingFailurePolicy(bindingContext).ConfigureAwait(false);
                                 }
                                 else
                                 {
@@ -102,7 +110,7 @@ public class EndpointHandler
                                         Detail = $"Could not bind parameter '{bindingContext.ParameterName}'.",
                                         Instance = request.GetEncodedUrl()
                                     };
-                                    await context.Response.WriteAsJsonAsync(problemDetails);
+                                    await context.Response.WriteAsJsonAsync(problemDetails).ConfigureAwait(false);
                                 }
 
                                 return null;
@@ -122,9 +130,15 @@ public class EndpointHandler
                 {
                     for (int i = 0; i < parameters.Length; i++)
                     {
-                        var bindResult = await BindParameter(parameters[i], sp, request, cancellationToken);
+                        var bindResult = await BindParameter(parameters[i], sp, request, cancellationToken).ConfigureAwait(false);
                         if (!bindResult.Success)
                         {
+                            if (useDefaultOnBindingFailure)
+                            {
+                                args[i] = GetDefaultValueForParameter(parameters[i]);
+                                continue;
+                            }
+
                             var bindingContext = new BindingFailureContext(
                                 context,
                                 parameters[i].Name ?? string.Empty,
@@ -136,7 +150,7 @@ public class EndpointHandler
                             if (bindingFailurePolicy is not null)
                             {
                                 // 1) Let the user handle it
-                                await bindingFailurePolicy(bindingContext);
+                                await bindingFailurePolicy(bindingContext).ConfigureAwait(false);
                             }
                             else
                             {
@@ -152,7 +166,7 @@ public class EndpointHandler
                                     Detail = $"Could not bind parameter '{bindingContext.ParameterName}'.",
                                     Instance = request.GetEncodedUrl()
                                 };
-                                await context.Response.WriteAsJsonAsync(problemDetails);
+                                await context.Response.WriteAsJsonAsync(problemDetails).ConfigureAwait(false);
                             }
 
                             return null;
@@ -255,6 +269,15 @@ public class EndpointHandler
                 }
             }
 
+            if (param.GetCustomAttribute<FromBodyAttribute>() != null)
+            {
+                if (!HasValidBodyContentType(request))
+                {
+                    return new BindResult(false, null, "Request body requires Content-Type application/json or application/xml.");
+                }
+                return await TryBindFromBodyAsync(param, request, cancellationToken).ConfigureAwait(false);
+            }
+
             if (request.RouteValues.TryGetValue(param.Name!, out var routeVal) && routeVal is string routeStr && routeStr != $"{{{param.Name!}}}")
             {
                 rawValue = routeStr;
@@ -282,18 +305,10 @@ public class EndpointHandler
                 return new BindResult(true, param.HasDefaultValue ? param.DefaultValue : Activator.CreateInstance(param.ParameterType), null);
             }
 
-            // Handle reference types or nullable value types
-            if (request.ContentLength > 0 && !string.IsNullOrEmpty(request.ContentType))
+            // Handle reference types or nullable value types (allow chunked: ContentLength can be null)
+            if ((request.ContentLength == null || request.ContentLength > 0) && HasValidBodyContentType(request))
             {
-                if (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
-                {
-                    return new BindResult(true, await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken), null);
-                }
-
-                if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
-                {
-                    return new BindResult(true, await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken), null);
-                }
+                return await TryBindFromBodyAsync(param, request, cancellationToken).ConfigureAwait(false);
             }
 
             _logger.LogDebug("No value found for parameter '{ParameterName}'", param.Name);
@@ -304,6 +319,28 @@ public class EndpointHandler
             _logger.LogError(pex, "An error occured while trying to bind value for parameter: {ParameterName}", param.Name);
             return new BindResult(false, rawValue!, pex.Message); ;
         }
+    }
+
+    private static bool HasValidBodyContentType(HttpRequest request)
+    {
+        return !string.IsNullOrEmpty(request.ContentType) &&
+            (request.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
+             request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async ValueTask<BindResult> TryBindFromBodyAsync(ParameterInfo param, HttpRequest request, CancellationToken cancellationToken)
+    {
+        if (request.ContentType!.Contains("json", StringComparison.OrdinalIgnoreCase))
+        {
+            var value = await request.ReadFromJsonAsync(param.ParameterType, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return new BindResult(true, value, null);
+        }
+        if (request.ContentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+        {
+            var value = await request.ReadFromXmlAsync(param.ParameterType, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return new BindResult(true, value, null);
+        }
+        return new BindResult(true, param.HasDefaultValue ? param.DefaultValue : null, null);
     }
 
     private object? ConvertParameter(string value, Type type)
@@ -359,6 +396,18 @@ public class EndpointHandler
                 ? _valueTypeInstances.GetOrAdd(type, Activator.CreateInstance)
                 : null;
         }
+    }
+
+    private static object? GetDefaultValueForParameter(ParameterInfo param)
+    {
+        if (param.HasDefaultValue)
+            return param.DefaultValue;
+
+        var type = param.ParameterType;
+        if (type.IsValueType && Nullable.GetUnderlyingType(type) == null)
+            return Activator.CreateInstance(type);
+
+        return null;
     }
 
     private MethodDetails GetMethodDetails(MethodInfo methodInfo)

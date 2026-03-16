@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +24,6 @@ public sealed class CreatedAtRouteNegotiatedResult : IResult
         var uri = links.GetUriByName(httpContext, _routeName, _routeValues);
         httpContext.Response.Headers.Location = uri;
 
-        await httpContext.Response.SendAsync(_value, StatusCodes.Status201Created);
+        await httpContext.Response.SendAsync(_value, StatusCodes.Status201Created).ConfigureAwait(false);
     }
 }

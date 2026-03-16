@@ -52,3 +52,38 @@ public enum CustomerType
     Premium,
     Standard
 }
+
+public sealed class ListCurrenciesEndpoint : IEndpoint
+{
+    public string Pattern => "/reference/currencies";
+    public HttpMethod Method => HttpMethod.Get;
+    public Delegate Handler => Handle;
+
+    /// <summary>
+    /// test
+    /// </summary>
+    /// <param name="tenantId"></param>
+    /// <param name="all"></param>
+    /// <param name="includeInactive"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    [HandlerMethod]
+    private async Task<IResult> Handle([FromQuery] Guid? tenantId, [FromQuery] bool? all, [FromQuery] bool? includeInactive, CancellationToken ct)
+    {
+        // ?all=true: return all active currencies (e.g. admin dropdown when adding a currency to a tenant)
+        if (all == true)
+        {
+            return Results.Ok(new { items = "" });
+        }
+        // Resolve tenant: explicit query param or current user's tenant (branch app / tenant config)
+        var resolvedTenantId = tenantId ?? GetClaimTenantId();
+        if (resolvedTenantId.HasValue)
+        {
+            return Results.Ok(new { items = "" });
+        }
+        // No tenant context: return all (e.g. global admin)
+        return Results.Ok(new { items = "" });
+    }
+
+    private Guid? GetClaimTenantId() => Guid.NewGuid();
+}

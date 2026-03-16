@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace MinimalEndpoints.Extensions.Http;
 
@@ -17,6 +17,6 @@ public sealed class CreatedNegotiatedResult : IResult
     {
         httpContext.Response.Headers.Location = _uri;
 
-        await httpContext.Response.SendAsync(_value, StatusCodes.Status201Created);
+        await httpContext.Response.SendAsync(_value, StatusCodes.Status201Created).ConfigureAwait(false);
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IO;
 using System.Xml.Serialization;
 
@@ -32,7 +32,7 @@ public class XmlResult<T> : IResult
         // Write the memory stream to the response Body
         httpContext.Response.StatusCode = _statusCode;
         httpContext.Response.ContentType = _contentType ?? "application/xml; charset=utf-8";
-        await ms.CopyToAsync(httpContext.Response.Body);
+        await ms.CopyToAsync(httpContext.Response.Body).ConfigureAwait(false);
     }
 }
 

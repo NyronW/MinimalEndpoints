@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,9 +45,9 @@ public abstract class EndpointBase<TRequest, TResponse> : EndpointBase, IEndpoin
         {
             try
             {
-                TRequest? request = await httpRequest.GetModelAsync<TRequest>(cancellationToken);
+                TRequest? request = await httpRequest.GetModelAsync<TRequest>(cancellationToken).ConfigureAwait(false);
 
-                var validationErrors = await ValidateAsync(request!);
+                var validationErrors = await ValidateAsync(request!).ConfigureAwait(false);
 
                 if (validationErrors.Any())
                 {
@@ -76,7 +76,7 @@ public abstract class EndpointBase<TRequest, TResponse> : EndpointBase, IEndpoin
                     return Results.Extensions.Problem(problem);
                 }
 
-                return await HandleRequestAsync(request!, httpRequest, cancellationToken);
+                return await HandleRequestAsync(request!, httpRequest, cancellationToken).ConfigureAwait(false);
             }
             catch (EndpointModelBindingException ex)
             {

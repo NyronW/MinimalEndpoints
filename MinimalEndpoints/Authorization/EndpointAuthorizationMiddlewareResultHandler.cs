@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +38,7 @@ public class EndpointAuthorizationMiddlewareResultHandler : IAuthorizationMiddle
                     Instance = reason.Instance
                 };
 
-                await httpContext.Response.SendAsync(problemDetail, StatusCodes.Status403Forbidden, "application/problem+");
+                await httpContext.Response.SendAsync(problemDetail, StatusCodes.Status403Forbidden, "application/problem+").ConfigureAwait(false);
                 return;
             }
             else
@@ -55,7 +55,7 @@ public class EndpointAuthorizationMiddlewareResultHandler : IAuthorizationMiddle
                         Instance = _contextAccessor?.HttpContext?.Request.Path.Value
                     };
 
-                    await httpContext.Response.SendAsync(problemDetail, StatusCodes.Status403Forbidden, "application/problem+");
+                    await httpContext.Response.SendAsync(problemDetail, StatusCodes.Status403Forbidden, "application/problem+").ConfigureAwait(false);
                     return;
                 }
             }
@@ -74,11 +74,11 @@ public class EndpointAuthorizationMiddlewareResultHandler : IAuthorizationMiddle
                     Instance = _contextAccessor?.HttpContext?.Request.Path.Value
                 };
 
-                await httpContext.Response.SendAsync(problemDetail, StatusCodes.Status403Forbidden, "application/problem+");
+                await httpContext.Response.SendAsync(problemDetail, StatusCodes.Status403Forbidden, "application/problem+").ConfigureAwait(false);
                 return;
             }
         }
 
-        await defaultHandler.HandleAsync(next, httpContext, policy, policyAuthorizationResult);
+        await defaultHandler.HandleAsync(next, httpContext, policy, policyAuthorizationResult).ConfigureAwait(false);
     }
 }

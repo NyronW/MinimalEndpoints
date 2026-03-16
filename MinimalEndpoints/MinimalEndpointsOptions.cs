@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System.Reflection;
 
 namespace MinimalEndpoints;
@@ -22,6 +22,14 @@ public class MinimalEndpointsOptions
     /// If null, the library can fall back to a default response (e.g., returning a 400 + ProblemDetails).
     /// </summary>
     public Func<BindingFailureContext, Task>? BindingFailurePolicy { get; set; }
+
+    /// <summary>
+    /// When true, a parameter that fails to bind will receive null (reference types) or type default (value types)
+    /// and the handler will still execute. When false, the library will invoke <see cref="BindingFailurePolicy"/>
+    /// if set, or otherwise return 400 Problem Details.
+    /// Default is false.
+    /// </summary>
+    public bool UseDefaultValueOnBindingFailure { get; set; }
 }
 
 

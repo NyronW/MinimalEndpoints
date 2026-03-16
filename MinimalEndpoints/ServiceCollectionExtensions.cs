@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using MinimalEndpoints.Authorization;
 using MinimalEndpoints.Extensions.Http.ContentNegotiation;
@@ -64,6 +64,8 @@ public static class ServiceCollectionExtensions
     {
         var options = new MinimalEndpointsOptions();
         configure?.Invoke(options);
+
+        services.AddSingleton(options);
 
         if (options.BindingFailurePolicy is not null)
         {

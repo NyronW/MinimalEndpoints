@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace MinimalEndpoints.Extensions.Http.ModelBinding;
 
@@ -12,7 +12,7 @@ public class JsonEndpointModelBiner : IEndpointModelBinder
         TModel? model = default;
 
         if (request.HasJsonContentType())
-            model = await request.ReadFromJsonAsync<TModel>(cancellationToken);
+            model = await request.ReadFromJsonAsync<TModel>(cancellationToken).ConfigureAwait(false);
         else
             throw new EndpointModelBindingException(
                 $"Unable to read the request as JSON because the request content type '{request.ContentType}' is not a known JSON content type.",

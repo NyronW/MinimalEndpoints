@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace MinimalEndpoints.Extensions.Http.ModelBinding;
 
@@ -12,7 +12,7 @@ public class XmlEndpointModelBinder : IEndpointModelBinder
         TModel? model = default;
 
         if (request.HasXmlContentType())
-            model = await request.ReadFromXmlAsync<TModel>(cancellationToken);
+            model = await request.ReadFromXmlAsync<TModel>(cancellationToken).ConfigureAwait(false);
 
         return model;
     }

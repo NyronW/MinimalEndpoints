@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
@@ -169,7 +169,7 @@ public static class EndpointRouteBuilderExtensions
                 RouteHandlerBuilder mapping = isOverridden ? (RouteHandlerBuilder)MapEndpoint.Invoke(endpoint, [builder])! : builder.MapMethods(pattern, methods, async ([FromServices] IServiceProvider sp, [FromServices] ILoggerFactory loggerFactory, HttpRequest request, CancellationToken cancellationToken = default) =>
                 {
                     var endpointHandler = sp.GetRequiredService<EndpointHandler>();
-                    var resp =  await endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken);
+                    var resp = await endpointHandler.HandleAsync(endpoint, sp, loggerFactory, request, cancellationToken).ConfigureAwait(false);
                     if (request.HttpContext.Response.HasStarted)
                     {
                         // Return an empty result so the framework doesn't try to write again.

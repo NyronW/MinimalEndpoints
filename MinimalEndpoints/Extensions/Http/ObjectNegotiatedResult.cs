@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace MinimalEndpoints.Extensions.Http;
 
@@ -17,7 +17,7 @@ public class ObjectNegotiatedResult : IResult
 
     public async Task ExecuteAsync(HttpContext httpContext)
     {
-        await httpContext.Response.SendAsync(_value, _statusCode, _contentType);
+        await httpContext.Response.SendAsync(_value, _statusCode, _contentType).ConfigureAwait(false);
     }
 }
 

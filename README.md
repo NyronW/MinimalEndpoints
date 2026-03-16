@@ -736,4 +736,7 @@ Update abstract method definition to accept a CancellationToken parameter to the
  * Added IEndpointDefinition interface to allow greater flexibility when defining API endpoints.
  * Improve Swagger XML support by supporting more datatypes
 
+ ### V1.4.0 Changes
+ * Added support for .NET 10
+
 

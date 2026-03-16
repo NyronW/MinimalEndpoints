@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace MinimalEndpoints.Extensions.Http;
 
@@ -19,7 +19,7 @@ public sealed class CorrelationIdFilter(string headerName) : IEndpointFilter
             httpContext.Response.Headers.Append(_headerName, correlationId);
         }
 
-        return await next(context);
+        return await next(context).ConfigureAwait(false);
     }
 }
 

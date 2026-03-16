@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,7 +32,7 @@ public static class HttpExtensions
                     instance: request.Path.Value);
             }
 
-            TModel? model = await binder.BindAsync<TModel>(request, cancellationToken);
+            TModel? model = await binder.BindAsync<TModel>(request, cancellationToken).ConfigureAwait(false);
 
             return model;
         }
@@ -61,7 +61,7 @@ public static class HttpExtensions
 
         try
         {
-            var body = await new StreamReader(inputStream).ReadToEndAsync(cancellationToken);
+            var body = await new StreamReader(inputStream).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             if (inputStream.CanSeek)
             {
@@ -76,7 +76,7 @@ public static class HttpExtensions
         }
         finally
         {
-            if (usesTranscodingStream) await inputStream.DisposeAsync();
+            if (usesTranscodingStream) await inputStream.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -92,7 +92,7 @@ public static class HttpExtensions
 
         try
         {
-            var body = await new StreamReader(inputStream).ReadToEndAsync(cancellationToken);
+            var body = await new StreamReader(inputStream).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             if (inputStream.CanSeek)
             {
@@ -107,7 +107,7 @@ public static class HttpExtensions
         }
         finally
         {
-            if (usesTranscodingStream) await inputStream.DisposeAsync();
+            if (usesTranscodingStream) await inputStream.DisposeAsync().ConfigureAwait(false);
         }
     }
 

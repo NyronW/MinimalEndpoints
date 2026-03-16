@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -27,6 +27,6 @@ public class JsonResponseNegotiator : ContentNegotiatorBase, IResponseNegotiator
         httpContext.Response.ContentType = CheckContentType(contentType, "json") ?? "application/json; charset=utf-8";
         if (statusCode.HasValue) httpContext.Response.StatusCode = statusCode.Value;
 
-        await JsonSerializer.SerializeAsync(httpContext.Response.Body, model, model == null ? typeof(object) : model.GetType(), JsonSettings, cancellationToken);
+        await JsonSerializer.SerializeAsync(httpContext.Response.Body, model, model == null ? typeof(object) : model.GetType(), JsonSettings, cancellationToken).ConfigureAwait(false);
     }
 }
