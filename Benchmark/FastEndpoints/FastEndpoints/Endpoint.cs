@@ -78,8 +78,8 @@ public class Endpoint : Endpoint<Request>
     public override async Task HandleAsync(Request request, CancellationToken ct)
     {
         await _validator.ValidateAsync(request);
-
-        await SendAsync(new Response()
+        
+        await Send.OkAsync(new Response()
         {
             Id = request.Id,
             Name = request.FirstName + " " + request.LastName,

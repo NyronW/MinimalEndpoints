@@ -85,10 +85,9 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
                     if (paramInfo.GetCustomAttribute<FromServicesAttribute>() != null)
                         continue;
 
-                    var isNullable = IsParameterNullable(paramInfo);;
+                    var isNullable = propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
 
-                    if (isNullable && propertyType.IsGenericType 
-                            && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                    if (isNullable)
                     {
                         propertyType = Nullable.GetUnderlyingType(propertyType);
                     }
@@ -296,22 +295,5 @@ public class EndpointXmlCommentsDocumentFilter(IEnumerable<string> xmlPaths, End
                 logger.LogWarning(exception, "An error occured while applying xml comments to the swagger document");
             }
         }
-    }
-
-    private bool IsParameterNullable(ParameterInfo parameter)
-    {
-        // Handle value types (they are nullable if they are Nullable<T>)
-        if (!parameter.ParameterType.IsValueType)
-        {
-            // Reference types
-            var nullableAttribute = parameter
-                .GetCustomAttributes(typeof(System.Runtime.CompilerServices.NullableAttribute), inherit: true)
-                .FirstOrDefault() as System.Runtime.CompilerServices.NullableAttribute;
-
-            return nullableAttribute?.NullableFlags.FirstOrDefault() == 2; // 2 means nullable reference type
-        }
-
-        // Nullable value types
-        return Nullable.GetUnderlyingType(parameter.ParameterType) != null;
     }
 }
